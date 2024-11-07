@@ -15,7 +15,11 @@ struct ContentView: View {
     var body: some View {
         NavigationView {
             VStack {
-                if contactsInCurrentArea.isEmpty {
+                if locationManager.currentLocation == nil {
+                    Text("Location services must be enabled for this app to work.")
+                        .multilineTextAlignment(.center)
+                        .padding()
+                } else if contactsInCurrentArea.isEmpty {
                     Text("No contacts in this area.")
                         .padding()
                 } else {
@@ -40,6 +44,7 @@ struct ContentView: View {
                 }) {
                     Image(systemName: "plus")
                 }
+                .disabled(locationManager.currentLocation == nil)
             )
             .sheet(isPresented: $showingAddContact) {
                 AddContactView()

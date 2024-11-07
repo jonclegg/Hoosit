@@ -1,10 +1,3 @@
-//
-//  MeetTrackerApp.swift
-//  MeetTracker
-//
-//  Created by Jonathan Clegg on 11/7/24.
-//
-
 import SwiftUI
 
 @main

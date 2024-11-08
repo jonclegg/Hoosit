@@ -33,16 +33,15 @@ struct ContentView: View {
                     updateMapLocations()
                 }
             
-            VStack {
-                Spacer()
-                
+            VStack(spacing: 0) {
                 if !contactsInCurrentArea.isEmpty {
                     ContactsListView(contacts: contactsInCurrentArea, deleteAction: deleteContacts)
-                        .frame(maxHeight: listHeight())
-                        .padding(.bottom, 16)
+                        .background(Color(.systemBackground))
+                        .transition(.move(edge: .bottom))
                 } else if locationManager.currentLocation != nil {
                     NoContactsView()
                         .padding(.bottom, 16)
+                        .transition(.move(edge: .bottom))
                 }
                 
                 ControlsView(centerOnUser: centerOnUser, addContactAction: {
@@ -51,13 +50,14 @@ struct ContentView: View {
                 .padding(.horizontal, 16)
                 .padding(.bottom, 16)
             }
+            .frame(maxHeight: .infinity, alignment: .bottom)
+            .animation(.easeOut(duration: 0.5), value: isLoading)
             
             if isLoading {
                 LoadingView()
                     .transition(.opacity)
             }
         }
-        .animation(.easeOut(duration: 0.5), value: isLoading)
         .onChange(of: locationManager.currentLocation) { newLocation in
             if let location = newLocation, !hasSetInitialLocation {
                 withAnimation {
@@ -133,13 +133,6 @@ struct ContentView: View {
             }
             updateMapLocations()
         }
-    }
-    
-    private func listHeight() -> CGFloat {
-        let rowHeight: CGFloat = 60
-        let maxVisibleRows = 5
-        let totalRows = contactsInCurrentArea.count
-        return CGFloat(min(totalRows, maxVisibleRows)) * rowHeight
     }
 }
 
@@ -264,13 +257,23 @@ struct ContactsListView: View {
     var body: some View {
         List {
             ForEach(contacts, id: \.self) { contact in
-            NavigationLink(destination: EditContactView(contact: contact)) {
+                NavigationLink(destination: EditContactView(contact: contact)) {
                     ContactRow(contact: contact)
                 }
             }
             .onDelete(perform: deleteAction)
         }
         .listStyle(PlainListStyle())
+        .frame(height: listHeight)
+        .background(Color(.systemBackground))
+    }
+    
+    // Computed property to calculate the list's height
+    private var listHeight: CGFloat {
+        let rowHeight: CGFloat = 60 // Adjust this based on your actual row height
+        let maxListHeight: CGFloat = UIScreen.main.bounds.height * 0.5 // Maximum height is half the screen height
+        let totalHeight = rowHeight * CGFloat(contacts.count)
+        return min(totalHeight, maxListHeight)
     }
 }
 

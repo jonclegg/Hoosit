@@ -1,279 +1,309 @@
 import SwiftUI
 import CoreData
 import CoreLocation
-import MapKit  // Import MapKit for map functionality
+import MapKit
 
-// Add this structure before ContentView
 struct IdentifiableLocation: Identifiable {
     let id = UUID()
-    let location: CLLocation
-    
-    var coordinate: CLLocationCoordinate2D {
-        location.coordinate
-    }
+    let coordinate: CLLocationCoordinate2D
 }
 
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
-    @StateObject var locationManager = LocationManager()
+    @StateObject private var locationManager = LocationManager()
     @FetchRequest(
         entity: Contact.entity(),
         sortDescriptors: [NSSortDescriptor(keyPath: \Contact.timestamp, ascending: false)]
-    ) var contacts: FetchedResults<Contact>
-
+    ) private var contacts: FetchedResults<Contact>
+    
     @State private var showingAddContact = false
-    @State private var region = MKCoordinateRegion()  // State for map region
+    @State private var region = MKCoordinateRegion()
     @State private var mapLocations: [IdentifiableLocation] = []
-    @State private var hasInitializedRegion = false
-    @State private var longPressLocation: CLLocationCoordinate2D?
     @State private var isLoading = true
-
+    @State private var longPressLocation: CLLocationCoordinate2D?
+    @State private var hasSetInitialLocation = false
+    
     var body: some View {
         ZStack {
-            // Loading screen
-            if isLoading {
-                ZStack {
-                    Color(.systemBackground).edgesIgnoringSafeArea(.all)
-                    VStack {
-                        if let iconDictionary = Bundle.main.infoDictionary?["CFBundleIcons"] as? [String: Any],
-                           let primaryIconDictionary = iconDictionary["CFBundlePrimaryIcon"] as? [String: Any],
-                           let iconFiles = primaryIconDictionary["CFBundleIconFiles"] as? [String],
-                           let lastIcon = iconFiles.last,
-                           let icon = UIImage(named: lastIcon) {
-                            Image(uiImage: icon)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 100, height: 100)
-                                .cornerRadius(20)
-                        } else {
-                            // Add this else clause for debugging
-                            Text("Could not load app icon")
-                                .foregroundColor(.gray)
-                        }
-                        
-                        ProgressView()
-                            .padding(.top)
-                    }
+            MapView(region: $region,
+                    mapLocations: $mapLocations,
+                    onLongPress: handleLongPress)
+                .edgesIgnoringSafeArea(.all)
+                .onAppear {
+                    updateMapLocations()
                 }
+            
+            VStack {
+                Spacer()
+                
+                if !contactsInCurrentArea.isEmpty {
+                    ContactsListView(contacts: contactsInCurrentArea, deleteAction: deleteContacts)
+                        .frame(maxHeight: listHeight())
+                        .padding(.bottom, 16)
+                } else if locationManager.currentLocation != nil {
+                    NoContactsView()
+                        .padding(.bottom, 16)
+                }
+                
+                ControlsView(centerOnUser: centerOnUser, addContactAction: {
+                    showingAddContact = true
+                })
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
             }
             
-            // Existing NavigationView
-            NavigationView {
-                ZStack(alignment: .bottomTrailing) {
-                    // Map view filling the entire background
-                    if let location = locationManager.currentLocation {
-                        Map(coordinateRegion: $region,
-                            showsUserLocation: true,
-                            annotationItems: mapLocations) { location in
-                            MapMarker(coordinate: location.coordinate)
-                        }
-                        .edgesIgnoringSafeArea(.all)
-                        .onAppear {
-                            if !hasInitializedRegion {
-                                centerOnUser(location: location)
-                                hasInitializedRegion = true
-                            }
-                            updateMapLocations()
-                        }
-                        .onChange(of: region) { oldValue, newValue in
-                            updateMapLocations()
-                        }
-                        .gesture(
-                            LongPressGesture(minimumDuration: 0.5)
-                                .sequenced(before: DragGesture(minimumDistance: 0))
-                                .onEnded { value in
-                                    switch value {
-                                    case .second(true, let dragValue):
-                                        if let dragValue = dragValue {  // Unwrap the optional drag value
-                                            let generator = UIImpactFeedbackGenerator(style: .medium)
-                                            generator.impactOccurred()
-                                            
-                                            // Convert tap location to map coordinate
-                                            let mapView = MKMapView()
-                                            mapView.region = region
-                                            let coordinate = mapView.convert(dragValue.location, toCoordinateFrom: nil)
-                                            longPressLocation = coordinate
-                                            showingAddContact = true
-                                        }
-                                    default:
-                                        break
-                                    }
-                                }
-                        )
-                        
-                        // Layer 3: GPS and Add buttons row
-                        VStack {
-                            Spacer()
-                            
-                            // GPS and Add buttons row
-                            HStack {
-                                Button(action: {
-                                    if let location = locationManager.currentLocation {
-                                        centerOnUser(location: location)
-                                    }
-                                }) {
-                                    Image(systemName: "location.fill")
-                                        .padding(12)
-                                        .background(Color(.systemBackground))
-                                        .clipShape(Circle())
-                                        .shadow(radius: 2)
-                                }
-                                .padding(.leading, 16)
-                                
-                                Spacer()
-                                
-                                Button(action: {
-                                    showingAddContact.toggle()
-                                }) {
-                                    Image(systemName: "plus")
-                                        .font(.title2)
-                                        .padding(12)
-                                        .background(Color.blue)
-                                        .foregroundColor(.white)
-                                        .clipShape(Circle())
-                                        .shadow(radius: 4)
-                                }
-                                .disabled(locationManager.currentLocation == nil)
-                                .padding(.trailing, 20)
-                            }
-                            
-                            // Contacts List (if any)
-                            if !contactsInCurrentArea.isEmpty {
-                                VStack(spacing: 0) {
-                                    List {
-                                        ForEach(contactsInCurrentArea, id: \.self) { contact in
-                                            NavigationLink(destination: EditContactView(contact: contact)) {
-                                                VStack(alignment: .leading, spacing: 4) {
-                                                    Text(contact.name ?? "Unknown")
-                                                        .font(.headline)
-                                                    if let description = contact.descriptionText {
-                                                        Text(description)
-                                                            .font(.subheadline)
-                                                            .foregroundColor(.gray)
-                                                    }
-                                                    if let timestamp = contact.timestamp {
-                                                        Text(timestamp, style: .date)
-                                                            .font(.caption)
-                                                            .foregroundColor(.gray)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        .onDelete(perform: deleteContacts)
-                                    }
-                                    .listStyle(PlainListStyle())
-                                    .frame(maxHeight: listHeight())
-                                }
-                                .frame(maxWidth: .infinity)
-                            } else if locationManager.currentLocation != nil {
-                                Text("No people in this area.")
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 8)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .fill(Color(.systemBackground).opacity(0.8))
-                                    )
-                                    .padding(.bottom, 16)
-                            }
-                        }
-                    } else {
-                        Text("Location services must be enabled for this app to work.")
-                            .multilineTextAlignment(.center)
-                            .padding()
-                    }
-                }
-                .navigationBarTitleDisplayMode(.inline)
-                .navigationBarTitle("")
+            if isLoading {
+                LoadingView()
+                    .transition(.opacity)
             }
-            .opacity(isLoading ? 0 : 1)
         }
-        .onAppear {
-            // Simulate loading delay and fade out splash screen
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                withAnimation(.easeOut(duration: 0.3)) {
-                    isLoading = false
+        .animation(.easeOut(duration: 0.5), value: isLoading)
+        .onChange(of: locationManager.currentLocation) { newLocation in
+            if let location = newLocation, !hasSetInitialLocation {
+                withAnimation {
+                    region = MKCoordinateRegion(
+                        center: location.coordinate,
+                        latitudinalMeters: 1000,
+                        longitudinalMeters: 1000
+                    )
+                    hasSetInitialLocation = true
                 }
             }
         }
-        .sheet(isPresented: $showingAddContact) {
+        .onAppear(perform: simulateLoading)
+        .sheet(isPresented: $showingAddContact, onDismiss: {
+            longPressLocation = nil
+            updateMapLocations()
+        }) {
             AddContactView(initialLocation: longPressLocation, onContactAdded: {
                 updateMapLocations()
             })
-            .environment(\.managedObjectContext, viewContext)
-            .environmentObject(locationManager)
+                .environment(\.managedObjectContext, viewContext)
+                .environmentObject(locationManager)
         }
     }
-
-    // Function to dynamically calculate the list's height
-    func listHeight() -> CGFloat {
-        let rowHeight: CGFloat = 60  // Approximate height of each row
-        let maxVisibleRows = 5       // Maximum number of rows to display at once
-        let totalRows = contactsInCurrentArea.count
-        let height = CGFloat(min(totalRows, maxVisibleRows)) * rowHeight
-        return height
-    }
-
-    // Filter contacts based on the current visible map region
-    var contactsInCurrentArea: [Contact] {
-        contacts.filter { contact in
-            let contactCoordinate = CLLocationCoordinate2D(latitude: contact.latitude, longitude: contact.longitude)
-            return region.contains(contactCoordinate)
+    
+    // MARK: - Private Methods
+    
+    private func updateMapLocations() {
+        mapLocations = contacts.map { contact in
+            IdentifiableLocation(coordinate: CLLocationCoordinate2D(latitude: contact.latitude, longitude: contact.longitude))
         }
     }
-
-    private func deleteContacts(offsets: IndexSet) {
-        withAnimation {
-            offsets.map { contactsInCurrentArea[$0] }.forEach(viewContext.delete)
-            
-            do {
-                try viewContext.save()
-            } catch {
-                // Handle the error appropriately
-                print("Error deleting contact: \(error)")
+    
+    private func centerOnUser() {
+        if let location = locationManager.currentLocation {
+            withAnimation {
+                region.center = location.coordinate
             }
         }
     }
-
-    private func updateMapLocations() {
-        mapLocations = contacts.map { contact in
-            let contactLocation = CLLocation(latitude: contact.latitude, longitude: contact.longitude)
-            return IdentifiableLocation(location: contactLocation)
+    
+    private func simulateLoading() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            withAnimation(.easeOut(duration: 0.5)) {
+                isLoading = false
+            }
         }
     }
-
-    private func centerOnUser(location: CLLocation) {
-        withAnimation {
-            region = MKCoordinateRegion(
-                center: location.coordinate,
-                latitudinalMeters: 1000,
-                longitudinalMeters: 1000
-            )
+    
+    private func handleLongPress(at coordinate: CLLocationCoordinate2D) {
+        longPressLocation = coordinate
+        showingAddContact = true
+    }
+    
+    // MARK: - Computed Properties
+    
+    private var contactsInCurrentArea: [Contact] {
+        contacts.filter { contact in
+            let coordinate = CLLocationCoordinate2D(latitude: contact.latitude, longitude: contact.longitude)
+            return region.contains(coordinate)
         }
+    }
+    
+    // MARK: - Actions
+    
+    private func deleteContacts(offsets: IndexSet) {
+        withAnimation {
+            offsets.map { contactsInCurrentArea[$0] }.forEach(viewContext.delete)
+            do {
+                try viewContext.save()
+            } catch {
+                print("Error deleting contact: \(error)")
+            }
+            updateMapLocations()
+        }
+    }
+    
+    private func listHeight() -> CGFloat {
+        let rowHeight: CGFloat = 60
+        let maxVisibleRows = 5
+        let totalRows = contactsInCurrentArea.count
+        return CGFloat(min(totalRows, maxVisibleRows)) * rowHeight
     }
 }
 
-// Extension to check if a coordinate is within the map region
+// MARK: - Extensions
+
 extension MKCoordinateRegion {
     func contains(_ coordinate: CLLocationCoordinate2D) -> Bool {
-        let latitudeDelta = span.latitudeDelta / 2.0
-        let longitudeDelta = span.longitudeDelta / 2.0
-
-        let minLat = center.latitude - latitudeDelta
-        let maxLat = center.latitude + latitudeDelta
-        let minLon = center.longitude - longitudeDelta
-        let maxLon = center.longitude + longitudeDelta
-
-        return (minLat...maxLat).contains(coordinate.latitude) &&
-               (minLon...maxLon).contains(coordinate.longitude)
+        let spanLat = span.latitudeDelta / 2.0
+        let spanLon = span.longitudeDelta / 2.0
+        
+        let minLat = center.latitude - spanLat
+        let maxLat = center.latitude + spanLat
+        let minLon = center.longitude - spanLon
+        let maxLon = center.longitude + spanLon
+        
+        return coordinate.latitude >= minLat && coordinate.latitude <= maxLat &&
+               coordinate.longitude >= minLon && coordinate.longitude <= maxLon
     }
 }
 
-// Extension to make MKCoordinateRegion conform to Equatable
-extension MKCoordinateRegion: Equatable {
-    public static func == (lhs: MKCoordinateRegion, rhs: MKCoordinateRegion) -> Bool {
-        lhs.center.latitude == rhs.center.latitude &&
-        lhs.center.longitude == rhs.center.longitude &&
-        lhs.span.latitudeDelta == rhs.span.latitudeDelta &&
-        lhs.span.longitudeDelta == rhs.span.longitudeDelta
+// MARK: - Subviews
+
+struct LoadingView: View {
+    var body: some View {
+        ZStack {
+            Color(.systemBackground)
+                .edgesIgnoringSafeArea(.all)
+            VStack {
+                if let icon = UIImage(named: getAppIconName() ?? "") {
+                    Image(uiImage: icon)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: UIScreen.main.bounds.width / 3)
+                        .cornerRadius(20)
+                } else {
+                    Text("Could not load app icon")
+                        .foregroundColor(.gray)
+                }
+                ProgressView()
+                    .padding(.top)
+            }
+        }
+        .transition(.opacity)
+    }
+    
+    private func getAppIconName() -> String? {
+        guard let iconsDictionary = Bundle.main.infoDictionary?["CFBundleIcons"] as? [String: Any],
+              let primaryIconsDictionary = iconsDictionary["CFBundlePrimaryIcon"] as? [String: Any],
+              let iconFiles = primaryIconsDictionary["CFBundleIconFiles"] as? [String],
+              let lastIcon = iconFiles.last else {
+            return nil
+        }
+        return lastIcon
+    }
+}
+
+struct MapView: View {
+    @Binding var region: MKCoordinateRegion
+    @Binding var mapLocations: [IdentifiableLocation]
+    var onLongPress: (CLLocationCoordinate2D) -> Void
+    
+    var body: some View {
+        Map(coordinateRegion: $region,
+            showsUserLocation: true,
+            annotationItems: mapLocations) { location in
+            MapMarker(coordinate: location.coordinate)
+        }
+        .gesture(
+            LongPressGesture(minimumDuration: 0.5)
+                .sequenced(before: DragGesture(minimumDistance: 0))
+                .onEnded(handleGesture)
+        )
+    }
+    
+    private func handleGesture(value: SequenceGesture<LongPressGesture, DragGesture>.Value) {
+        if case let .second(true, drag?) = value {
+            let coordinate = getMapCoordinate(from: drag.location)
+            onLongPress(coordinate)
+        }
+    }
+    
+    private func getMapCoordinate(from point: CGPoint) -> CLLocationCoordinate2D {
+        let mapView = MKMapView(frame: UIScreen.main.bounds)
+        mapView.region = region
+        return mapView.convert(point, toCoordinateFrom: nil)
+    }
+}
+
+struct ControlsView: View {
+    var centerOnUser: () -> Void
+    var addContactAction: () -> Void
+    
+    var body: some View {
+        HStack {
+            Button(action: centerOnUser) {
+                Image(systemName: "location.fill")
+                    .padding(12)
+                    .background(Color(.systemBackground))
+                    .clipShape(Circle())
+                    .shadow(radius: 2)
+            }
+            
+            Spacer()
+            
+            Button(action: addContactAction) {
+                Image(systemName: "plus")
+                    .font(.title2)
+                    .padding(12)
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .clipShape(Circle())
+                    .shadow(radius: 4)
+            }
+        }
+    }
+}
+
+struct ContactsListView: View {
+    var contacts: [Contact]
+    var deleteAction: (IndexSet) -> Void
+    
+    var body: some View {
+        List {
+            ForEach(contacts, id: \.self) { contact in
+            NavigationLink(destination: EditContactView(contact: contact)) {
+                    ContactRow(contact: contact)
+                }
+            }
+            .onDelete(perform: deleteAction)
+        }
+        .listStyle(PlainListStyle())
+    }
+}
+
+struct ContactRow: View {
+    var contact: Contact
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(contact.name ?? "Unknown")
+                .font(.headline)
+            if let description = contact.descriptionText {
+                Text(description)
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+            }
+            if let timestamp = contact.timestamp {
+                Text(timestamp, style: .date)
+                    .font(.caption)
+                    .foregroundColor(.gray)
+                    .padding(.bottom, 4)
+            }
+        }
+    }
+}
+
+struct NoContactsView: View {
+    var body: some View {
+        Text("No people in this area.")
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color(.systemBackground).opacity(0.8))
+            )
     }
 }

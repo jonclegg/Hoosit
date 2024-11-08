@@ -2,15 +2,14 @@ import Foundation
 import CoreLocation
 
 class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
-    private let manager = CLLocationManager()
+    private let locationManager = CLLocationManager()
     @Published var currentLocation: CLLocation?
 
     override init() {
         super.init()
-        manager.delegate = self
-        manager.requestWhenInUseAuthorization()
-        manager.desiredAccuracy = kCLLocationAccuracyBest
-        manager.startUpdatingLocation()
+        self.locationManager.delegate = self
+        self.locationManager.requestWhenInUseAuthorization()
+        self.locationManager.startUpdatingLocation()
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
@@ -30,7 +29,7 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
 
     var locationStatus: String {
-        switch manager.authorizationStatus {
+        switch locationManager.authorizationStatus {
         case .notDetermined:
             return "Please allow location access"
         case .restricted, .denied:

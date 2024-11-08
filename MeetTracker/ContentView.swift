@@ -24,10 +24,11 @@ struct ContentView: View {
     @State private var showingAddContact = false
     @State private var region = MKCoordinateRegion()  // State for map region
     @State private var mapLocations: [IdentifiableLocation] = []
+    @State private var hasInitializedRegion = false
 
     var body: some View {
         NavigationView {
-            ZStack(alignment: .bottom) {
+            ZStack(alignment: .bottomTrailing) {
                 // Map view filling the entire background
                 if let location = locationManager.currentLocation {
                     Map(coordinateRegion: $region,
@@ -37,75 +38,105 @@ struct ContentView: View {
                     }
                     .edgesIgnoringSafeArea(.all)
                     .onAppear {
-                        region = MKCoordinateRegion(
-                            center: location.coordinate,
-                            latitudinalMeters: 1000,
-                            longitudinalMeters: 1000
-                        )
+                        if !hasInitializedRegion {
+                            centerOnUser(location: location)
+                            hasInitializedRegion = true
+                        }
                         updateMapLocations()
                     }
-                    .onChange(of: location) { _ in
+                    .onChange(of: region) { _ in
                         updateMapLocations()
                     }
-                    .overlay(
-                        Circle()
-                            .stroke(Color.blue, lineWidth: 2)
-                            .frame(width: radiusInPixels(), height: radiusInPixels())
-                            .opacity(0.5)
-                    )
+                    
+                    // Layer 3: GPS Button (top left)
+                    VStack {
+                        HStack {
+                        Button(action: {
+                                if let location = locationManager.currentLocation {
+                                    centerOnUser(location: location)
+                                }
+                            }) {
+                                Image(systemName: "location.fill")
+                                    .padding(12)
+                                    .background(Color(.systemBackground))
+                                    .clipShape(Circle())
+                                    .shadow(radius: 2)
+                            }
+                            .padding(.leading, 16)
+                            Spacer()
+                        }
+                        .padding(.top, 8)  // Adjust this value to align with navigation bar
+                        Spacer()
+                    }
+                    
+                    // Layer 2: Overlay Views
+                    VStack {
+                        Spacer()
+                        
+                        // Contacts List (if any)
+                        if !contactsInCurrentArea.isEmpty {
+                            VStack(spacing: 0) {
+                                List {
+                                    ForEach(contactsInCurrentArea, id: \.self) { contact in
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text(contact.name ?? "Unknown")
+                                                .font(.headline)
+                                            if let description = contact.descriptionText {
+                                                Text(description)
+                                                    .font(.subheadline)
+                                                    .foregroundColor(.gray)
+                                            }
+                                            if let timestamp = contact.timestamp {
+                                                Text(timestamp, style: .date)
+                                                    .font(.caption)
+                                                    .foregroundColor(.gray)
+                                            }
+                                        }
+                                    }
+                                    .onDelete(perform: deleteContacts)
+                                }
+                                .listStyle(PlainListStyle())
+                                .frame(maxHeight: listHeight())
+                            }
+                            .frame(maxWidth: .infinity)
+                        } else if locationManager.currentLocation != nil {
+                            Text("No contacts in this area.")
+                                .padding()
+                                .background(Color(.systemBackground).opacity(0.8))
+                        }
+                        
+                        // Add Person Button (now below the list)
+                        Button(action: {
+                            showingAddContact.toggle()
+                        }) {
+                            HStack {
+                                Image(systemName: "plus.circle.fill")
+                                Text("Add Person")
+                                    .fontWeight(.semibold)
+                            }
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                        }
+                        .disabled(locationManager.currentLocation == nil)
+                        .padding(.horizontal)
+                        .padding(.bottom)  // Added bottom padding
+                    }
                 } else {
                     Text("Location services must be enabled for this app to work.")
                         .multilineTextAlignment(.center)
                         .padding()
                 }
-
-                // List of contacts at the bottom
-                if !contactsInCurrentArea.isEmpty {
-                    VStack(spacing: 0) {
-                        List {
-                            ForEach(contactsInCurrentArea, id: \.self) { contact in
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(contact.name ?? "Unknown")
-                                        .font(.headline)
-                                    if let description = contact.descriptionText {
-                                        Text(description)
-                                            .font(.subheadline)
-                                            .foregroundColor(.gray)
-                                    }
-                                    if let timestamp = contact.timestamp {
-                                        Text(timestamp, style: .date)
-                                            .font(.caption)
-                                            .foregroundColor(.gray)
-                                    }
-                                }
-                            }
-                            .onDelete(perform: deleteContacts)
-                        }
-                        .listStyle(PlainListStyle())
-                        .frame(maxHeight: listHeight())  // Limit the height based on content
-                    }
-                    .background(Color(.systemBackground).opacity(0.8))
-                } else if locationManager.currentLocation != nil {
-                    Text("No contacts in this area.")
-                        .padding()
-                        .background(Color(.systemBackground).opacity(0.8))
-                }
             }
             .navigationBarTitleDisplayMode(.inline)
             .navigationBarTitle("WhosIt")
-            .navigationBarItems(trailing:
-                Button(action: {
-                    showingAddContact.toggle()
-                }) {
-                    Image(systemName: "plus")
-                }
-                .disabled(locationManager.currentLocation == nil)
-            )
-            .sheet(isPresented: $showingAddContact) {
-                AddContactView()
-                    .environment(\.managedObjectContext, viewContext)
-                    .environmentObject(locationManager)
-            }
+        }
+        .sheet(isPresented: $showingAddContact) {
+            AddContactView()
+                .environment(\.managedObjectContext, viewContext)
+                .environmentObject(locationManager)
         }
     }
 
@@ -118,42 +149,14 @@ struct ContentView: View {
         return height
     }
 
-    // Function to convert radius to pixels for the circle overlay
-    func radiusInPixels() -> CGFloat {
-        let radiusInMeters = 500.0  // Your radius value
-        let mapViewWidth = UIScreen.main.bounds.width
-        let regionSpanInMeters = region.span.longitudeDelta * 111_000  // Approximate meters per degree
-
-        // Prevent division by zero or invalid calculations
-        guard regionSpanInMeters > 0 else { return 100 } // Default fallback size
-
-        let pixelsPerMeter = mapViewWidth / CGFloat(regionSpanInMeters)
-        let diameter = CGFloat(radiusInMeters * 2) * pixelsPerMeter
-
-        // Ensure the result is valid and reasonable
-        if diameter.isFinite && diameter > 0 && diameter < mapViewWidth * 2 {
-            return diameter
-        }
-        return 100 // Default fallback size
-    }
-
-    // Filter contacts based on current location
+    // Filter contacts based on the current visible map region
     var contactsInCurrentArea: [Contact] {
-        guard let currentLocation = locationManager.currentLocation else {
-            return []
-        }
-        return contacts.filter { contact in
-            let contactLocation = CLLocation(latitude: contact.latitude, longitude: contact.longitude)
-            return isWithinArea(contactLocation: contactLocation, currentLocation: currentLocation, radius: 500)
+        contacts.filter { contact in
+            let contactCoordinate = CLLocationCoordinate2D(latitude: contact.latitude, longitude: contact.longitude)
+            return region.contains(contactCoordinate)
         }
     }
 
-    func isWithinArea(contactLocation: CLLocation, currentLocation: CLLocation, radius: Double) -> Bool {
-        let distance = contactLocation.distance(from: currentLocation)
-        return distance <= radius
-    }
-
-    // Add this function before the last closing brace of ContentView
     private func deleteContacts(offsets: IndexSet) {
         withAnimation {
             offsets.map { contactsInCurrentArea[$0] }.forEach(viewContext.delete)
@@ -168,16 +171,45 @@ struct ContentView: View {
     }
 
     private func updateMapLocations() {
-        guard let currentLocation = locationManager.currentLocation else { return }
-        
-        var locations: [IdentifiableLocation] = []
-        
-        // Only add contact locations, skip current location
-        for contact in contactsInCurrentArea {
+        mapLocations = contacts.map { contact in
             let contactLocation = CLLocation(latitude: contact.latitude, longitude: contact.longitude)
-            locations.append(IdentifiableLocation(location: contactLocation))
+            return IdentifiableLocation(location: contactLocation)
         }
-        
-        mapLocations = locations
+    }
+
+    private func centerOnUser(location: CLLocation) {
+        withAnimation {
+            region = MKCoordinateRegion(
+                center: location.coordinate,
+                latitudinalMeters: 1000,
+                longitudinalMeters: 1000
+            )
+        }
+    }
+}
+
+// Extension to check if a coordinate is within the map region
+extension MKCoordinateRegion {
+    func contains(_ coordinate: CLLocationCoordinate2D) -> Bool {
+        let latitudeDelta = span.latitudeDelta / 2.0
+        let longitudeDelta = span.longitudeDelta / 2.0
+
+        let minLat = center.latitude - latitudeDelta
+        let maxLat = center.latitude + latitudeDelta
+        let minLon = center.longitude - longitudeDelta
+        let maxLon = center.longitude + longitudeDelta
+
+        return (minLat...maxLat).contains(coordinate.latitude) &&
+               (minLon...maxLon).contains(coordinate.longitude)
+    }
+}
+
+// Extension to make MKCoordinateRegion conform to Equatable
+extension MKCoordinateRegion: Equatable {
+    public static func == (lhs: MKCoordinateRegion, rhs: MKCoordinateRegion) -> Bool {
+        lhs.center.latitude == rhs.center.latitude &&
+        lhs.center.longitude == rhs.center.longitude &&
+        lhs.span.latitudeDelta == rhs.span.latitudeDelta &&
+        lhs.span.longitudeDelta == rhs.span.longitudeDelta
     }
 }

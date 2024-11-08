@@ -35,7 +35,14 @@ struct ContentView: View {
                         updateMapLocations()
                     }
                 
-                VStack(spacing: 0) {
+                VStack {
+                    Spacer()
+                    
+                    ControlsView(centerOnUser: centerOnUser, addContactAction: {
+                        showingAddContact = true
+                    })
+                    .padding(.horizontal, 16)
+                    
                     if !contactsInCurrentArea.isEmpty {
                         ContactsListView(
                             contacts: contactsInCurrentArea,
@@ -48,25 +55,14 @@ struct ContentView: View {
                         .id(refreshID)
                         .background(Color(.systemBackground))
                         .transition(.move(edge: .bottom))
+                        .ignoresSafeArea(edges: .bottom)
                     } else if locationManager.currentLocation != nil {
                         NoContactsView()
                             .padding(.bottom, 16)
                             .transition(.move(edge: .bottom))
                     }
-                    
-                    ControlsView(centerOnUser: centerOnUser, addContactAction: {
-                        showingAddContact = true
-                    })
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 16)
                 }
-                .frame(maxHeight: .infinity, alignment: .bottom)
-                .animation(.easeOut(duration: 0.5), value: isLoading)
-                
-                if isLoading {
-                    LoadingView()
-                        .transition(.opacity)
-                }
+                .ignoresSafeArea(edges: .bottom)
             }
             .onChange(of: locationManager.currentLocation) { newLocation in
                 if let location = newLocation, !hasSetInitialLocation {
@@ -274,17 +270,24 @@ struct ContactsListView: View {
                 }
             }
             .onDelete(perform: deleteAction)
+            
+            // Add empty row for padding
+            Color.clear
+                .frame(height: 20)
+                .listRowBackground(Color.clear)
         }
         .listStyle(PlainListStyle())
         .frame(height: listHeight)
         .background(Color(.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+        .ignoresSafeArea(edges: .bottom)
     }
     
-    // Computed property to calculate the list's height
     private var listHeight: CGFloat {
-        let rowHeight: CGFloat = 60 // Adjust this based on your actual row height
-        let maxListHeight: CGFloat = UIScreen.main.bounds.height * 0.5 // Maximum height is half the screen height
-        let totalHeight = rowHeight * CGFloat(contacts.count)
+        let rowHeight: CGFloat = 60
+        let maxListHeight: CGFloat = UIScreen.main.bounds.height * 0.5
+        let paddingHeight: CGFloat = 20 // Account for bottom padding
+        let totalHeight = (rowHeight * CGFloat(contacts.count)) + paddingHeight
         return min(totalHeight, maxListHeight)
     }
 }

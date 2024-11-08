@@ -29,9 +29,9 @@
 		BB0EDE762CDD91880037ACBF /* barton_springs.gpx */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = barton_springs.gpx; sourceTree = "<group>"; };
 		BB0EDE772CDD91900037ACBF /* ut_austin.gpx */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = ut_austin.gpx; sourceTree = "<group>"; };
 		BB0EDE782CDD91970037ACBF /* downtown_austin.gpx */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = downtown_austin.gpx; sourceTree = "<group>"; };
-		BBDD96B52CDD698C00328D65 /* Whosit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Whosit.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		BBDD96CA2CDD698E00328D65 /* WhositTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WhositTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		BBDD96D42CDD698E00328D65 /* WhositUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WhositUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BBDD96B52CDD698C00328D65 /* Hoosit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Hoosit.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BBDD96CA2CDD698E00328D65 /* HoositTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HoositTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BBDD96D42CDD698E00328D65 /* HoositUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = HoositUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -95,9 +95,9 @@
 		BBDD96B62CDD698C00328D65 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				BBDD96B52CDD698C00328D65 /* Whosit.app */,
-				BBDD96CA2CDD698E00328D65 /* WhositTests.xctest */,
-				BBDD96D42CDD698E00328D65 /* WhositUITests.xctest */,
+				BBDD96B52CDD698C00328D65 /* Hoosit.app */,
+				BBDD96CA2CDD698E00328D65 /* HoositTests.xctest */,
+				BBDD96D42CDD698E00328D65 /* HoositUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -105,9 +105,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		BBDD96B42CDD698C00328D65 /* Whosit */ = {
+		BBDD96B42CDD698C00328D65 /* Hoosit */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = BBDD96DE2CDD698E00328D65 /* Build configuration list for PBXNativeTarget "Whosit" */;
+			buildConfigurationList = BBDD96DE2CDD698E00328D65 /* Build configuration list for PBXNativeTarget "Hoosit" */;
 			buildPhases = (
 				BBDD96B12CDD698C00328D65 /* Sources */,
 				BBDD96B22CDD698C00328D65 /* Frameworks */,
@@ -120,16 +120,16 @@
 			fileSystemSynchronizedGroups = (
 				BBDD96B72CDD698C00328D65 /* MeetTracker */,
 			);
-			name = Whosit;
+			name = Hoosit;
 			packageProductDependencies = (
 			);
 			productName = MeetTracker;
-			productReference = BBDD96B52CDD698C00328D65 /* Whosit.app */;
+			productReference = BBDD96B52CDD698C00328D65 /* Hoosit.app */;
 			productType = "com.apple.product-type.application";
 		};
-		BBDD96C92CDD698E00328D65 /* WhositTests */ = {
+		BBDD96C92CDD698E00328D65 /* HoositTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = BBDD96E12CDD698E00328D65 /* Build configuration list for PBXNativeTarget "WhositTests" */;
+			buildConfigurationList = BBDD96E12CDD698E00328D65 /* Build configuration list for PBXNativeTarget "HoositTests" */;
 			buildPhases = (
 				BBDD96C62CDD698E00328D65 /* Sources */,
 				BBDD96C72CDD698E00328D65 /* Frameworks */,
@@ -143,16 +143,16 @@
 			fileSystemSynchronizedGroups = (
 				BBDD96CD2CDD698E00328D65 /* MeetTrackerTests */,
 			);
-			name = WhositTests;
+			name = HoositTests;
 			packageProductDependencies = (
 			);
 			productName = MeetTrackerTests;
-			productReference = BBDD96CA2CDD698E00328D65 /* WhositTests.xctest */;
+			productReference = BBDD96CA2CDD698E00328D65 /* HoositTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		BBDD96D32CDD698E00328D65 /* WhositUITests */ = {
+		BBDD96D32CDD698E00328D65 /* HoositUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = BBDD96E42CDD698E00328D65 /* Build configuration list for PBXNativeTarget "WhositUITests" */;
+			buildConfigurationList = BBDD96E42CDD698E00328D65 /* Build configuration list for PBXNativeTarget "HoositUITests" */;
 			buildPhases = (
 				BBDD96D02CDD698E00328D65 /* Sources */,
 				BBDD96D12CDD698E00328D65 /* Frameworks */,
@@ -166,11 +166,11 @@
 			fileSystemSynchronizedGroups = (
 				BBDD96D72CDD698E00328D65 /* MeetTrackerUITests */,
 			);
-			name = WhositUITests;
+			name = HoositUITests;
 			packageProductDependencies = (
 			);
 			productName = MeetTrackerUITests;
-			productReference = BBDD96D42CDD698E00328D65 /* WhositUITests.xctest */;
+			productReference = BBDD96D42CDD698E00328D65 /* HoositUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
@@ -192,11 +192,10 @@
 					};
 					BBDD96D32CDD698E00328D65 = {
 						CreatedOnToolsVersion = 16.1;
-						TestTargetID = BBDD96B42CDD698C00328D65;
 					};
 				};
 			};
-			buildConfigurationList = BBDD96B02CDD698C00328D65 /* Build configuration list for PBXProject "Whosit" */;
+			buildConfigurationList = BBDD96B02CDD698C00328D65 /* Build configuration list for PBXProject "Hoosit" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -210,9 +209,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				BBDD96B42CDD698C00328D65 /* Whosit */,
-				BBDD96C92CDD698E00328D65 /* WhositTests */,
-				BBDD96D32CDD698E00328D65 /* WhositUITests */,
+				BBDD96B42CDD698C00328D65 /* Hoosit */,
+				BBDD96C92CDD698E00328D65 /* HoositTests */,
+				BBDD96D32CDD698E00328D65 /* HoositUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -268,12 +267,12 @@
 /* Begin PBXTargetDependency section */
 		BBDD96CC2CDD698E00328D65 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = BBDD96B42CDD698C00328D65 /* Whosit */;
+			target = BBDD96B42CDD698C00328D65 /* Hoosit */;
 			targetProxy = BBDD96CB2CDD698E00328D65 /* PBXContainerItemProxy */;
 		};
 		BBDD96D62CDD698E00328D65 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = BBDD96B42CDD698C00328D65 /* Whosit */;
+			target = BBDD96B42CDD698C00328D65 /* Hoosit */;
 			targetProxy = BBDD96D52CDD698E00328D65 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -421,7 +420,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = Watergoesdownhill.Whosit;
+				PRODUCT_BUNDLE_IDENTIFIER = loafmeow.Hoosit;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -452,7 +451,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = Watergoesdownhill.Whosit;
+				PRODUCT_BUNDLE_IDENTIFIER = loafmeow.Hoosit;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -470,12 +469,12 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.1;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = Watergoesdownhill.Whosit;
+				PRODUCT_BUNDLE_IDENTIFIER = loafmeow.Hoosit;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Whosit.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Whosit";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Hoosit.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Hoosit";
 			};
 			name = Debug;
 		};
@@ -494,7 +493,7 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Whosit.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Whosit";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Hoosit.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Hoosit";
 			};
 			name = Release;
 		};
@@ -506,12 +505,12 @@
 				DEVELOPMENT_TEAM = 22CTWHGWQQ;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = Watergoesdownhill.Whosit;
+				PRODUCT_BUNDLE_IDENTIFIER = loafmeow.Hoosit;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE = "";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = MeetTracker;
 			};
 			name = Debug;
 		};
@@ -523,19 +522,19 @@
 				DEVELOPMENT_TEAM = 22CTWHGWQQ;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = Watergoesdownhill.Whosit;
+				PRODUCT_BUNDLE_IDENTIFIER = loafmeow.Hoosit;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE = "";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = MeetTracker;
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		BBDD96B02CDD698C00328D65 /* Build configuration list for PBXProject "Whosit" */ = {
+		BBDD96B02CDD698C00328D65 /* Build configuration list for PBXProject "Hoosit" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				BBDD96DC2CDD698E00328D65 /* Debug */,
@@ -544,7 +543,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		BBDD96DE2CDD698E00328D65 /* Build configuration list for PBXNativeTarget "Whosit" */ = {
+		BBDD96DE2CDD698E00328D65 /* Build configuration list for PBXNativeTarget "Hoosit" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				BBDD96DF2CDD698E00328D65 /* Debug */,
@@ -553,7 +552,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		BBDD96E12CDD698E00328D65 /* Build configuration list for PBXNativeTarget "WhositTests" */ = {
+		BBDD96E12CDD698E00328D65 /* Build configuration list for PBXNativeTarget "HoositTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				BBDD96E22CDD698E00328D65 /* Debug */,
@@ -562,7 +561,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		BBDD96E42CDD698E00328D65 /* Build configuration list for PBXNativeTarget "WhositUITests" */ = {
+		BBDD96E42CDD698E00328D65 /* Build configuration list for PBXNativeTarget "HoositUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				BBDD96E52CDD698E00328D65 /* Debug */,

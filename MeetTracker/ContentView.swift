@@ -268,6 +268,7 @@ struct ContactsListView: View {
                 NavigationLink(destination: EditContactView(contact: contact, onContactUpdated: onContactUpdated)) {
                     ContactRow(contact: contact)
                 }
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
             }
             .onDelete(perform: deleteAction)
             
@@ -284,7 +285,7 @@ struct ContactsListView: View {
     }
     
     private var listHeight: CGFloat {
-        let rowHeight: CGFloat = 60
+        let rowHeight: CGFloat = 80
         let maxListHeight: CGFloat = UIScreen.main.bounds.height * 0.5
         let paddingHeight: CGFloat = 20 // Account for bottom padding
         let totalHeight = (rowHeight * CGFloat(contacts.count)) + paddingHeight
@@ -308,7 +309,6 @@ struct ContactRow: View {
                 Text(timestamp, style: .date)
                     .font(.caption)
                     .foregroundColor(.gray)
-                    .padding(.bottom, 4)
             }
         }
     }

@@ -1,13 +1,22 @@
 import SwiftUI
 import CoreData
+import CoreLocation
 
 struct AddContactView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @EnvironmentObject var locationManager: LocationManager
     @Environment(\.presentationMode) var presentationMode
 
+    let initialLocation: CLLocationCoordinate2D?
+    var onContactAdded: (() -> Void)
+
     @State private var name = ""
     @State private var descriptionText = ""
+
+    init(initialLocation: CLLocationCoordinate2D? = nil, onContactAdded: @escaping () -> Void) {
+        self.initialLocation = initialLocation
+        self.onContactAdded = onContactAdded
+    }
 
     var body: some View {
         NavigationView {
@@ -27,23 +36,29 @@ struct AddContactView: View {
     }
 
     private func addContact() {
-        guard let location = locationManager.currentLocation else {
-            // Handle the case where location is not available
+        // Use initialLocation if available, otherwise fall back to current location
+        let coordinate: CLLocationCoordinate2D
+        if let location = initialLocation {
+            coordinate = location
+        } else if let currentLocation = locationManager.currentLocation {
+            coordinate = currentLocation.coordinate
+        } else {
+            // Handle the case where no location is available
             return
         }
 
         let newContact = Contact(context: viewContext)
         newContact.name = name
         newContact.descriptionText = descriptionText.isEmpty ? nil : descriptionText
-        newContact.latitude = location.coordinate.latitude
-        newContact.longitude = location.coordinate.longitude
+        newContact.latitude = coordinate.latitude
+        newContact.longitude = coordinate.longitude
         newContact.timestamp = Date()
 
         do {
             try viewContext.save()
+            onContactAdded()
             presentationMode.wrappedValue.dismiss()
         } catch {
-            // Handle the error appropriately
             print("Error saving contact: \(error)")
         }
     }

@@ -22,64 +22,75 @@ struct ContentView: View {
     @State private var isLoading = true
     @State private var longPressLocation: CLLocationCoordinate2D?
     @State private var hasSetInitialLocation = false
+    @State private var refreshID = UUID()
     
     var body: some View {
-        ZStack {
-            MapView(region: $region,
-                    mapLocations: $mapLocations,
-                    onLongPress: handleLongPress)
-                .edgesIgnoringSafeArea(.all)
-                .onAppear {
-                    updateMapLocations()
-                }
-            
-            VStack(spacing: 0) {
-                if !contactsInCurrentArea.isEmpty {
-                    ContactsListView(contacts: contactsInCurrentArea, deleteAction: deleteContacts)
+        NavigationStack {
+            ZStack {
+                MapView(region: $region,
+                        mapLocations: $mapLocations,
+                        onLongPress: handleLongPress)
+                    .edgesIgnoringSafeArea(.all)
+                    .onAppear {
+                        updateMapLocations()
+                    }
+                
+                VStack(spacing: 0) {
+                    if !contactsInCurrentArea.isEmpty {
+                        ContactsListView(
+                            contacts: contactsInCurrentArea,
+                            deleteAction: deleteContacts,
+                            onContactUpdated: {
+                                refreshID = UUID()
+                                updateMapLocations()
+                            }
+                        )
+                        .id(refreshID)
                         .background(Color(.systemBackground))
                         .transition(.move(edge: .bottom))
-                } else if locationManager.currentLocation != nil {
-                    NoContactsView()
-                        .padding(.bottom, 16)
-                        .transition(.move(edge: .bottom))
+                    } else if locationManager.currentLocation != nil {
+                        NoContactsView()
+                            .padding(.bottom, 16)
+                            .transition(.move(edge: .bottom))
+                    }
+                    
+                    ControlsView(centerOnUser: centerOnUser, addContactAction: {
+                        showingAddContact = true
+                    })
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 16)
                 }
+                .frame(maxHeight: .infinity, alignment: .bottom)
+                .animation(.easeOut(duration: 0.5), value: isLoading)
                 
-                ControlsView(centerOnUser: centerOnUser, addContactAction: {
-                    showingAddContact = true
-                })
-                .padding(.horizontal, 16)
-                .padding(.bottom, 16)
-            }
-            .frame(maxHeight: .infinity, alignment: .bottom)
-            .animation(.easeOut(duration: 0.5), value: isLoading)
-            
-            if isLoading {
-                LoadingView()
-                    .transition(.opacity)
-            }
-        }
-        .onChange(of: locationManager.currentLocation) { newLocation in
-            if let location = newLocation, !hasSetInitialLocation {
-                withAnimation {
-                    region = MKCoordinateRegion(
-                        center: location.coordinate,
-                        latitudinalMeters: 1000,
-                        longitudinalMeters: 1000
-                    )
-                    hasSetInitialLocation = true
+                if isLoading {
+                    LoadingView()
+                        .transition(.opacity)
                 }
             }
-        }
-        .onAppear(perform: simulateLoading)
-        .sheet(isPresented: $showingAddContact, onDismiss: {
-            longPressLocation = nil
-            updateMapLocations()
-        }) {
-            AddContactView(initialLocation: longPressLocation, onContactAdded: {
+            .onChange(of: locationManager.currentLocation) { newLocation in
+                if let location = newLocation, !hasSetInitialLocation {
+                    withAnimation {
+                        region = MKCoordinateRegion(
+                            center: location.coordinate,
+                            latitudinalMeters: 1000,
+                            longitudinalMeters: 1000
+                        )
+                        hasSetInitialLocation = true
+                    }
+                }
+            }
+            .onAppear(perform: simulateLoading)
+            .sheet(isPresented: $showingAddContact, onDismiss: {
+                longPressLocation = nil
                 updateMapLocations()
-            })
-                .environment(\.managedObjectContext, viewContext)
-                .environmentObject(locationManager)
+            }) {
+                AddContactView(initialLocation: longPressLocation, onContactAdded: {
+                    updateMapLocations()
+                })
+                    .environment(\.managedObjectContext, viewContext)
+                    .environmentObject(locationManager)
+            }
         }
     }
     
@@ -253,11 +264,12 @@ struct ControlsView: View {
 struct ContactsListView: View {
     var contacts: [Contact]
     var deleteAction: (IndexSet) -> Void
+    var onContactUpdated: () -> Void
     
     var body: some View {
         List {
             ForEach(contacts, id: \.self) { contact in
-                NavigationLink(destination: EditContactView(contact: contact)) {
+                NavigationLink(destination: EditContactView(contact: contact, onContactUpdated: onContactUpdated)) {
                     ContactRow(contact: contact)
                 }
             }

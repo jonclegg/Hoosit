@@ -22,7 +22,9 @@ struct ContentView: View {
     @State private var isLoading = true
     @State private var longPressLocation: CLLocationCoordinate2D?
     @State private var hasSetInitialLocation = false
-    @State private var refreshID = UUID()
+    
+    // New state for ContextListView
+    @State private var contextContacts: [Contact] = []
     
     var body: some View {
         NavigationStack {
@@ -33,33 +35,27 @@ struct ContentView: View {
                     .edgesIgnoringSafeArea(.all)
                     .onAppear {
                         updateMapLocations()
+                        updateContextContacts()
                     }
+                    .onChange(of: region, perform: { _ in
+                        updateContextContacts()
+                    })
                 
                 VStack {
                     Spacer()
                     
-                    ControlsView(centerOnUser: centerOnUser, addContactAction: {
-                        showingAddContact = true
-                    })
-                    .padding(.horizontal, 16)
-                    
-                    if !contactsInCurrentArea.isEmpty {
-                        ContactsListView(
-                            contacts: contactsInCurrentArea,
-                            deleteAction: deleteContacts,
-                            onContactUpdated: {
-                                refreshID = UUID()
-                                updateMapLocations()
-                            }
-                        )
-                        .id(refreshID)
-                        .background(Color(.systemBackground))
-                        .transition(.move(edge: .bottom))
-                        .ignoresSafeArea(edges: .bottom)
-                    } else if locationManager.currentLocation != nil {
-                        NoContactsView()
-                            .padding(.bottom, 16)
-                            .transition(.move(edge: .bottom))
+                    // ContextListView with Controls above it
+                    VStack(spacing: 16) {
+                        ControlsView(centerOnUser: centerOnUser, addContactAction: {
+                            showingAddContact = true
+                        })
+                        .padding(.horizontal, 16)
+                        
+                        ContextListView(contacts: $contextContacts,
+                                      region: $region,
+                                      onContactSelected: { contact in
+                            navigateToEditContact(contact)
+                        })
                     }
                 }
                 .ignoresSafeArea(edges: .bottom)
@@ -80,9 +76,11 @@ struct ContentView: View {
             .sheet(isPresented: $showingAddContact, onDismiss: {
                 longPressLocation = nil
                 updateMapLocations()
+                updateContextContacts()
             }) {
                 AddContactView(initialLocation: longPressLocation, onContactAdded: {
                     updateMapLocations()
+                    updateContextContacts()
                 })
                     .environment(\.managedObjectContext, viewContext)
                     .environmentObject(locationManager)
@@ -96,6 +94,10 @@ struct ContentView: View {
         mapLocations = contacts.map { contact in
             IdentifiableLocation(coordinate: CLLocationCoordinate2D(latitude: contact.latitude, longitude: contact.longitude))
         }
+    }
+    
+    private func updateContextContacts() {
+        contextContacts = contactsInCurrentArea
     }
     
     private func centerOnUser() {
@@ -119,6 +121,10 @@ struct ContentView: View {
         showingAddContact = true
     }
     
+    private func navigateToEditContact(_ contact: Contact) {
+        // Implement navigation logic, possibly using a NavigationLink with a hidden state
+    }
+    
     // MARK: - Computed Properties
     
     private var contactsInCurrentArea: [Contact] {
@@ -139,6 +145,7 @@ struct ContentView: View {
                 print("Error deleting contact: \(error)")
             }
             updateMapLocations()
+            updateContextContacts()
         }
     }
 }
@@ -157,6 +164,15 @@ extension MKCoordinateRegion {
         
         return coordinate.latitude >= minLat && coordinate.latitude <= maxLat &&
                coordinate.longitude >= minLon && coordinate.longitude <= maxLon
+    }
+}
+
+extension MKCoordinateRegion: Equatable {
+    public static func == (lhs: MKCoordinateRegion, rhs: MKCoordinateRegion) -> Bool {
+        lhs.center.latitude == rhs.center.latitude &&
+        lhs.center.longitude == rhs.center.longitude &&
+        lhs.span.latitudeDelta == rhs.span.latitudeDelta &&
+        lhs.span.longitudeDelta == rhs.span.longitudeDelta
     }
 }
 

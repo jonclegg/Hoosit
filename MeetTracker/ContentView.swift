@@ -313,20 +313,24 @@ struct ContactRow: View {
     var contact: Contact
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
             Text(contact.name ?? "Unknown")
-                .font(.headline)
+                .font(.body)
             if let description = contact.descriptionText {
                 Text(description)
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
             }
             if let timestamp = contact.timestamp {
-                Text(timestamp, style: .date)
-                    .font(.caption)
-                    .foregroundColor(.gray)
+                Text("Added \(timestamp, style: .date)")
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+                    .padding(.bottom, 4)
             }
         }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

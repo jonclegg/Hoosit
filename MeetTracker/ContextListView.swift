@@ -19,7 +19,7 @@ struct ContextListView: View {
     // Computed properties
     private var listHeight: CGFloat {
         let rowHeight: CGFloat = 80
-        let padding: CGFloat = 20
+        let padding: CGFloat = 60
         let totalHeight = (rowHeight * CGFloat(contacts.count)) + padding
         return min(totalHeight, maxHeight)
     }
@@ -50,15 +50,18 @@ struct ContextListView: View {
                                 ContactRow(contact: contact)
                             }
                             .buttonStyle(PlainButtonStyle())
-                            .padding(.horizontal)
                             Divider()
-                                .padding(.leading)
                         }
+                        
+                        // Add empty space at bottom for padding
+                        Color.clear
+                            .frame(height: 40)
                     }
                 }
                 .frame(maxHeight: listHeight)
             }
         }
+        .padding(.bottom, 20) // Add padding to bottom of entire VStack
         .frame(width: UIScreen.main.bounds.width, height: currentHeight + dragOffset)
         .background(
             RoundedRectangle(cornerRadius: 15)

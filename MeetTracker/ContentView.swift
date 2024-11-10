@@ -17,46 +17,41 @@ struct ContentView: View {
     ) private var contacts: FetchedResults<Contact>
     
     @State private var showingAddContact = false
-    @State private var region = MKCoordinateRegion()
-    @State private var mapLocations: [IdentifiableLocation] = []
+    @State private var region = MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194), // Default location
+        span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+    )
     @State private var isLoading = true
     @State private var longPressLocation: CLLocationCoordinate2D?
     @State private var hasSetInitialLocation = false
     
-    // New state for ContextListView
-    @State private var contextContacts: [Contact] = []
+    // States for editing contact
+    @State private var selectedContact: Contact?
+    @State private var showingEditContact = false
     
     var body: some View {
         NavigationStack {
             ZStack {
-                MapView(region: $region,
-                        mapLocations: $mapLocations,
-                        onLongPress: handleLongPress)
-                    .edgesIgnoringSafeArea(.all)
-                    .onAppear {
-                        updateMapLocations()
-                        updateContextContacts()
-                    }
-                    .onChange(of: region, perform: { _ in
-                        updateContextContacts()
-                    })
+                MapView(
+                    region: $region,
+                    contacts: contacts,
+                    onClusterTapped: handleClusterTap,
+                    onContactSelected: navigateToEditContact
+                )
+                .edgesIgnoringSafeArea(.all)
+                .onAppear {
+                    // Initial setup if needed
+                }
                 
                 VStack {
                     Spacer()
                     
-                    // ContextListView with Controls above it
-                    VStack(spacing: 16) {
-                        ControlsView(centerOnUser: centerOnUser, addContactAction: {
-                            showingAddContact = true
-                        })
-                        .padding(.horizontal, 16)
-                        
-                        ContextListView(contacts: $contextContacts,
-                                      region: $region,
-                                      onContactSelected: { contact in
-                            navigateToEditContact(contact)
-                        })
-                    }
+                    // ControlsView remains
+                    ControlsView(centerOnUser: centerOnUser, addContactAction: {
+                        showingAddContact = true
+                    })
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 20) // Adjust padding as needed
                 }
                 .ignoresSafeArea(edges: .bottom)
             }
@@ -75,30 +70,22 @@ struct ContentView: View {
             .onAppear(perform: simulateLoading)
             .sheet(isPresented: $showingAddContact, onDismiss: {
                 longPressLocation = nil
-                updateMapLocations()
-                updateContextContacts()
             }) {
                 AddContactView(initialLocation: longPressLocation, onContactAdded: {
-                    updateMapLocations()
-                    updateContextContacts()
+                    // Update map if needed
                 })
                     .environment(\.managedObjectContext, viewContext)
                     .environmentObject(locationManager)
+            }
+            .sheet(item: $selectedContact) { contact in
+                EditContactView(contact: contact, onContactUpdated: {
+                    // Handle updates if necessary
+                })
             }
         }
     }
     
     // MARK: - Private Methods
-    
-    private func updateMapLocations() {
-        mapLocations = contacts.map { contact in
-            IdentifiableLocation(coordinate: CLLocationCoordinate2D(latitude: contact.latitude, longitude: contact.longitude))
-        }
-    }
-    
-    private func updateContextContacts() {
-        contextContacts = contactsInCurrentArea
-    }
     
     private func centerOnUser() {
         if let location = locationManager.currentLocation {
@@ -116,37 +103,23 @@ struct ContentView: View {
         }
     }
     
-    private func handleLongPress(at coordinate: CLLocationCoordinate2D) {
-        longPressLocation = coordinate
-        showingAddContact = true
+    private func handleClusterTap(_ cluster: MKClusterAnnotation) {
+        // Calculate the region to zoom into based on cluster's boundingMapRect
+        let edgePadding = UIEdgeInsets(top: 100, left: 100, bottom: 100, right: 100)
+        let mapRect = cluster.memberAnnotations.reduce(MKMapRect.null) { (current, annotation) -> MKMapRect in
+            let annotationPoint = MKMapPoint(annotation.coordinate)
+            let pointRect = MKMapRect(x: annotationPoint.x, y: annotationPoint.y, width: 0.1, height: 0.1)
+            return current.union(pointRect)
+        }
+        let newRegion = MKCoordinateRegion(mapRect)
+        withAnimation {
+            region = newRegion
+        }
     }
     
     private func navigateToEditContact(_ contact: Contact) {
-        // Implement navigation logic, possibly using a NavigationLink with a hidden state
-    }
-    
-    // MARK: - Computed Properties
-    
-    private var contactsInCurrentArea: [Contact] {
-        contacts.filter { contact in
-            let coordinate = CLLocationCoordinate2D(latitude: contact.latitude, longitude: contact.longitude)
-            return region.contains(coordinate)
-        }
-    }
-    
-    // MARK: - Actions
-    
-    private func deleteContacts(offsets: IndexSet) {
-        withAnimation {
-            offsets.map { contactsInCurrentArea[$0] }.forEach(viewContext.delete)
-            do {
-                try viewContext.save()
-            } catch {
-                print("Error deleting contact: \(error)")
-            }
-            updateMapLocations()
-            updateContextContacts()
-        }
+        selectedContact = contact
+        showingEditContact = true
     }
 }
 
@@ -214,33 +187,47 @@ struct LoadingView: View {
 
 struct MapView: View {
     @Binding var region: MKCoordinateRegion
-    @Binding var mapLocations: [IdentifiableLocation]
-    var onLongPress: (CLLocationCoordinate2D) -> Void
+    var contacts: FetchedResults<Contact>
+    var onClusterTapped: (MKClusterAnnotation) -> Void
+    var onContactSelected: (Contact) -> Void
     
     var body: some View {
         Map(coordinateRegion: $region,
             showsUserLocation: true,
-            annotationItems: mapLocations) { location in
-            MapMarker(coordinate: location.coordinate)
+            annotationItems: contacts) { contact in
+                MapAnnotation(coordinate: CLLocationCoordinate2D(
+                    latitude: contact.latitude,
+                    longitude: contact.longitude
+                )) {
+                    VStack(spacing: 4) {
+                        Text(contact.name ?? "Unknown")
+                            .font(.caption)
+                            .bold()
+                        Text(contact.descriptionText ?? "")
+                            .font(.caption2)
+                        Text(contact.timestamp?.formatted(.dateTime.month().day()) ?? "")
+                            .font(.caption2)
+                            .foregroundColor(.gray)
+                    }
+                    .padding(8)
+                    .background(Color(.systemBackground))
+                    .cornerRadius(8)
+                    .shadow(radius: 2)
+                    .onTapGesture {
+                        onContactSelected(contact)
+                    }
+                }
         }
-        .gesture(
-            LongPressGesture(minimumDuration: 0.5)
-                .sequenced(before: DragGesture(minimumDistance: 0))
-                .onEnded(handleGesture)
-        )
-    }
-    
-    private func handleGesture(value: SequenceGesture<LongPressGesture, DragGesture>.Value) {
-        if case let .second(true, drag?) = value {
-            let coordinate = getMapCoordinate(from: drag.location)
-            onLongPress(coordinate)
-        }
-    }
-    
-    private func getMapCoordinate(from point: CGPoint) -> CLLocationCoordinate2D {
-        let mapView = MKMapView(frame: UIScreen.main.bounds)
-        mapView.region = region
-        return mapView.convert(point, toCoordinateFrom: nil)
+        
+        // Target overlay
+        Image(systemName: "plus.circle")
+            .font(.title)
+            .foregroundColor(.blue)
+            .background(
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: 32, height: 32)
+            )
     }
 }
 
@@ -261,76 +248,16 @@ struct ControlsView: View {
             Spacer()
             
             Button(action: addContactAction) {
-                Image(systemName: "plus")
-                    .font(.title2)
-                    .padding(12)
+                Text("Add Person")
+                    .font(.body)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
                     .background(Color.blue)
                     .foregroundColor(.white)
-                    .clipShape(Circle())
+                    .clipShape(Capsule())
                     .shadow(radius: 4)
             }
         }
-    }
-}
-
-struct ContactsListView: View {
-    var contacts: [Contact]
-    var deleteAction: (IndexSet) -> Void
-    var onContactUpdated: () -> Void
-    
-    var body: some View {
-        List {
-            ForEach(contacts, id: \.self) { contact in
-                NavigationLink(destination: EditContactView(contact: contact, onContactUpdated: onContactUpdated)) {
-                    ContactRow(contact: contact)
-                }
-                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-            }
-            .onDelete(perform: deleteAction)
-            
-            // Add empty row for padding
-            Color.clear
-                .frame(height: 20)
-                .listRowBackground(Color.clear)
-        }
-        .listStyle(PlainListStyle())
-        .frame(height: listHeight)
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
-        .ignoresSafeArea(edges: .bottom)
-    }
-    
-    private var listHeight: CGFloat {
-        let rowHeight: CGFloat = 80
-        let maxListHeight: CGFloat = UIScreen.main.bounds.height * 0.5
-        let paddingHeight: CGFloat = 20 // Account for bottom padding
-        let totalHeight = (rowHeight * CGFloat(contacts.count)) + paddingHeight
-        return min(totalHeight, maxListHeight)
-    }
-}
-
-struct ContactRow: View {
-    var contact: Contact
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(contact.name ?? "Unknown")
-                .font(.body)
-            if let description = contact.descriptionText {
-                Text(description)
-                    .font(.footnote)
-                    .foregroundColor(.secondary)
-            }
-            if let timestamp = contact.timestamp {
-                Text("Added \(timestamp, style: .date)")
-                    .font(.footnote)
-                    .foregroundColor(.secondary)
-                    .padding(.bottom, 4)
-            }
-        }
-        .padding(.vertical, 12)
-        .padding(.horizontal, 16)
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

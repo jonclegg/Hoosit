@@ -18,30 +18,42 @@ struct EditContactView: View {
     }
     
     var body: some View {
-        Form {
-            Section {
-                TextField("Name", text: $name)
-                    .onChange(of: name) { newValue in
-                        contact.name = newValue
-                        saveContext()
-                    }
+        NavigationView {
+            Form {
+                Section {
+                    TextField("Name", text: $name)
+                        .onChange(of: name) { newValue in
+                            contact.name = newValue
+                            saveContext()
+                        }
+                    
+                    TextField("Description", text: $descriptionText)
+                        .onChange(of: descriptionText) { newValue in
+                            contact.descriptionText = newValue
+                            saveContext()
+                        }
+                }
                 
-                TextField("Description", text: $descriptionText)
-                    .onChange(of: descriptionText) { newValue in
-                        contact.descriptionText = newValue
-                        saveContext()
-                    }
+                Section {
+                    Text("Met on \(contact.timestamp ?? Date(), style: .date)")
+                        .foregroundColor(.gray)
+                    
+                    Text("Location: \(String(format: "%.6f", contact.latitude)), \(String(format: "%.6f", contact.longitude))")
+                        .foregroundColor(.gray)
+                }
             }
-            
-            Section {
-                Text("Met on \(contact.timestamp ?? Date(), style: .date)")
-                    .foregroundColor(.gray)
-                
-                Text("Location: \(String(format: "%.6f", contact.latitude)), \(String(format: "%.6f", contact.longitude))")
-                    .foregroundColor(.gray)
+            .navigationTitle("Edit Contact")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        saveContext()
+                        dismiss()
+                    }
+                }
             }
         }
-        .navigationTitle("Edit Contact")
+        .presentationDetents([.medium])
     }
     
     private func saveContext() {

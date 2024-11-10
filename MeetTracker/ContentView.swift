@@ -94,12 +94,12 @@ struct ContentView: View {
                                 .clipShape(Circle())
                                 .shadow(radius: 2)
                         }
-                        .padding(.leading, 16)
                         .opacity(showingSidebar ? 0 : 1)
+                        .padding(.leading, 16)
                         Spacer()
                     }
-                    .padding(.top, 48)
-                    
+                    .padding(.top, 0)
+                   
                     Spacer()
                     
                     // ControlsView remains
@@ -410,7 +410,8 @@ struct SidebarView: View {
             NavigationStack {
                 VStack {
                     TextEditor(text: $importText)
-                        .frame(height: 200)
+                        .font(.system(.caption, design: .monospaced))
+                        .frame(maxHeight: .infinity)
                         .padding()
                         .border(Color.gray.opacity(0.2))
                     
@@ -460,10 +461,10 @@ struct SidebarView: View {
             NavigationStack {
                 VStack {
                     TextEditor(text: .constant(exportText))
-                        .frame(height: 200)
+                        .font(.system(.caption, design: .monospaced))
+                        .frame(maxHeight: .infinity)
                         .padding()
                         .border(Color.gray.opacity(0.2))
-                        .font(.system(.body, design: .monospaced))
                     
                     Button(action: {
                         UIPasteboard.general.string = exportText

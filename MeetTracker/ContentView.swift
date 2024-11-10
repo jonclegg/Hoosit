@@ -8,6 +8,26 @@ struct IdentifiableLocation: Identifiable {
     let coordinate: CLLocationCoordinate2D
 }
 
+class ShareActivityItem: NSObject, UIActivityItemSource {
+    let json: String
+    
+    init(json: String) {
+        self.json = json
+    }
+    
+    func activityViewControllerPlaceholderItem(_ activityViewController: UIActivityViewController) -> Any {
+        return "Hoosit Contacts"
+    }
+    
+    func activityViewController(_ activityViewController: UIActivityViewController, itemForActivityType activityType: UIActivity.ActivityType?) -> Any? {
+        return json
+    }
+    
+    func activityViewController(_ activityViewController: UIActivityViewController, subjectForActivityType activityType: UIActivity.ActivityType?) -> String {
+        return "Hoosit Contacts"
+    }
+}
+
 struct ContentView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @StateObject private var locationManager = LocationManager()
@@ -360,16 +380,17 @@ struct SidebarView: View {
                 .padding(.top, 48)
             
             Button {
-                let items = prepareContactsForSharing()
-                let av = UIActivityViewController(
-                    activityItems: items,
-                    applicationActivities: nil)
-                
-                // Get the window scene
-                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                   let window = windowScene.windows.first,
-                   let rootVC = window.rootViewController {
-                    rootVC.present(av, animated: true)
+                if let jsonString = prepareContactsForSharing().first {
+                    let shareActivity = ShareActivityItem(json: jsonString)
+                    let av = UIActivityViewController(
+                        activityItems: [shareActivity],
+                        applicationActivities: nil)
+                    
+                    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                       let window = windowScene.windows.first,
+                       let rootVC = window.rootViewController {
+                        rootVC.present(av, animated: true)
+                    }
                 }
             } label: {
                 Label("Export Contacts", systemImage: "square.and.arrow.up")

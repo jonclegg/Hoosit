@@ -95,10 +95,10 @@ struct ContentView: View {
                                 .shadow(radius: 2)
                         }
                         .padding(.leading, 16)
+                        .opacity(showingSidebar ? 0 : 1)
                         Spacer()
                     }
                     .padding(.top, 48)
-                    .zIndex(1)
                     
                     Spacer()
                     
@@ -372,41 +372,131 @@ struct SidebarView: View {
     @Environment(\.managedObjectContext) private var viewContext
     @State private var showingShareSheet = false
     @State private var contactsToShare: [Any] = []
+    @State private var showingImportDialog = false
+    @State private var importText = ""
+    @State private var showingImportError = false
+    @State private var showingExportDialog = false
+    @State private var exportText = ""
+    @State private var showCopiedAlert = false
+    @State private var showingImportConfirmation = false
+    @State private var pendingImportText = ""
+    @State private var importStats = (toImport: 0, existing: 0)
     
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            Text("Menu")
+            Text("Hoosit")
                 .font(.title)
                 .padding(.top, 48)
             
             Button {
-                if let jsonString = prepareContactsForSharing().first {
-                    let shareActivity = ShareActivityItem(json: jsonString)
-                    let av = UIActivityViewController(
-                        activityItems: [shareActivity],
-                        applicationActivities: nil)
-                    
-                    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                       let window = windowScene.windows.first,
-                       let rootVC = window.rootViewController {
-                        rootVC.present(av, animated: true)
-                    }
-                }
+                exportText = prepareContactsForSharing().first ?? "No contacts to share"
+                showingExportDialog = true
             } label: {
                 Label("Export Contacts", systemImage: "square.and.arrow.up")
             }
             
-            Button(action: importContacts) {
+            Button(action: { showingImportDialog = true }) {
                 Label("Import Contacts", systemImage: "square.and.arrow.down")
             }
             
             Spacer()
         }
-        .frame(width: 300)
+        .frame(width: 180)
         .padding()
         .background(Color(.systemBackground))
         .edgesIgnoringSafeArea(.vertical)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .sheet(isPresented: $showingImportDialog) {
+            NavigationStack {
+                VStack {
+                    TextEditor(text: $importText)
+                        .frame(height: 200)
+                        .padding()
+                        .border(Color.gray.opacity(0.2))
+                    
+                    Button("Import") {
+                        if let stats = getImportStats(from: importText) {
+                            importStats = stats
+                            pendingImportText = importText
+                            showingImportConfirmation = true
+                        } else {
+                            showingImportError = true
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .padding()
+                    .alert("Confirm Import", isPresented: $showingImportConfirmation) {
+                        Button("Cancel", role: .cancel) { }
+                        Button("Import", role: .destructive) {
+                            if importContacts(from: pendingImportText) {
+                                showingImportDialog = false
+                                importText = ""
+                            } else {
+                                showingImportError = true
+                            }
+                        }
+                    } message: {
+                        Text("This will import \(importStats.toImport) contacts and remove your existing \(importStats.existing) contacts. Are you sure?")
+                    }
+                }
+                .padding()
+                .navigationTitle("Import Contacts")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") {
+                            showingImportDialog = false
+                        }
+                    }
+                }
+                .alert("Import Error", isPresented: $showingImportError) {
+                    Button("OK", role: .cancel) { }
+                } message: {
+                    Text("Unable to import contacts. Please check the JSON format and try again.")
+                }
+            }
+        }
+        .sheet(isPresented: $showingExportDialog) {
+            NavigationStack {
+                VStack {
+                    TextEditor(text: .constant(exportText))
+                        .frame(height: 200)
+                        .padding()
+                        .border(Color.gray.opacity(0.2))
+                        .font(.system(.body, design: .monospaced))
+                    
+                    Button(action: {
+                        UIPasteboard.general.string = exportText
+                        showCopiedAlert = true
+                    }) {
+                        Label("Copy to Clipboard", systemImage: "doc.on.doc")
+                            .padding()
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(8)
+                    }
+                    .padding()
+                }
+                .padding()
+                .navigationTitle("Export Contacts")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Done") {
+                            showingExportDialog = false
+                        }
+                    }
+                }
+                .alert("Copied!", isPresented: $showCopiedAlert) {
+                    Button("OK", role: .cancel) { }
+                } message: {
+                    Text("Contact data has been copied to clipboard.")
+                }
+                .onAppear {
+                    exportText = prepareContactsForSharing().first ?? "No contacts to share"
+                }
+            }
+        }
     }
     
     private func prepareContactsForSharing() -> [String] {
@@ -431,27 +521,58 @@ struct SidebarView: View {
         return ["No contacts to share"]
     }
     
-    private func importContacts() {
-        guard let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
-        let importPath = documentsPath.appendingPathComponent("contacts.json")
-        
-        guard let jsonData = try? Data(contentsOf: importPath),
-              let contactsArray = try? JSONSerialization.jsonObject(with: jsonData) as? [[String: Any]] else { return }
+    private func importContacts(from jsonString: String) -> Bool {
+        guard let jsonData = jsonString.data(using: .utf8),
+              let contactsArray = try? JSONSerialization.jsonObject(with: jsonData) as? [[String: Any]] else {
+            return false
+        }
         
         let dateFormatter = ISO8601DateFormatter()
         
-        for contactData in contactsArray {
-            let contact = Contact(context: viewContext)
-            contact.name = contactData["name"] as? String
-            contact.descriptionText = contactData["descriptionText"] as? String
-            contact.latitude = contactData["latitude"] as? Double ?? 0
-            contact.longitude = contactData["longitude"] as? Double ?? 0
-            if let timestampString = contactData["timestamp"] as? String {
-                contact.timestamp = dateFormatter.date(from: timestampString)
+        // Delete all existing contacts
+        let fetchRequest: NSFetchRequest<NSFetchRequestResult> = Contact.fetchRequest()
+        let batchDeleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)
+        
+        do {
+            try viewContext.execute(batchDeleteRequest)
+            
+            // Important: Refresh the view context after batch delete
+            viewContext.reset()
+            
+            // Import new contacts
+            for contactData in contactsArray {
+                let contact = Contact(context: viewContext)
+                contact.name = contactData["name"] as? String
+                contact.descriptionText = contactData["descriptionText"] as? String
+                contact.latitude = contactData["latitude"] as? Double ?? 0
+                contact.longitude = contactData["longitude"] as? Double ?? 0
+                if let timestampString = contactData["timestamp"] as? String {
+                    contact.timestamp = dateFormatter.date(from: timestampString)
+                }
             }
+            
+            try viewContext.save()
+            
+            // Refresh each registered object individually
+            for object in viewContext.registeredObjects {
+                viewContext.refresh(object, mergeChanges: false)
+            }
+            
+            return true
+        } catch {
+            print("Import error: \(error)")
+            return false
+        }
+    }
+    
+    private func getImportStats(from jsonString: String) -> (toImport: Int, existing: Int)? {
+        guard let jsonData = jsonString.data(using: .utf8),
+              let contactsArray = try? JSONSerialization.jsonObject(with: jsonData) as? [[String: Any]] else {
+            return nil
         }
         
-        try? viewContext.save()
+        let existingCount = (try? viewContext.count(for: Contact.fetchRequest())) ?? 0
+        return (contactsArray.count, existingCount)
     }
 }
 

@@ -29,11 +29,14 @@ struct ContentView: View {
     @State private var selectedContact: Contact?
     @State private var showingEditContact = false
     
+    @State private var targetLocation: CLLocationCoordinate2D?
+    
     var body: some View {
         NavigationStack {
             ZStack {
                 MapView(
                     region: $region,
+                    targetLocation: $targetLocation,
                     contacts: contacts,
                     onClusterTapped: handleClusterTap,
                     onContactSelected: navigateToEditContact
@@ -69,10 +72,14 @@ struct ContentView: View {
             }
             .onAppear(perform: simulateLoading)
             .sheet(isPresented: $showingAddContact, onDismiss: {
-                longPressLocation = nil
+                targetLocation = nil
             }) {
-                AddContactView(initialLocation: longPressLocation, onContactAdded: {
-                    // Update map if needed
+                AddContactView(initialLocation: targetLocation, onContactAdded: {
+                    if let location = targetLocation {
+                        withAnimation {
+                            region.center = location
+                        }
+                    }
                 })
                     .environment(\.managedObjectContext, viewContext)
                     .environmentObject(locationManager)
@@ -120,6 +127,10 @@ struct ContentView: View {
     private func navigateToEditContact(_ contact: Contact) {
         selectedContact = contact
         showingEditContact = true
+    }
+    
+    private func updateTargetLocation() {
+        targetLocation = region.center
     }
 }
 
@@ -187,6 +198,7 @@ struct LoadingView: View {
 
 struct MapView: View {
     @Binding var region: MKCoordinateRegion
+    @Binding var targetLocation: CLLocationCoordinate2D?
     var contacts: FetchedResults<Contact>
     var onClusterTapped: (MKClusterAnnotation) -> Void
     var onContactSelected: (Contact) -> Void
@@ -199,23 +211,18 @@ struct MapView: View {
                     latitude: contact.latitude,
                     longitude: contact.longitude
                 )) {
-                    VStack(spacing: 4) {
-                        Text(contact.name ?? "Unknown")
-                            .font(.caption)
-                            .bold()
-                        Text(contact.descriptionText ?? "")
-                            .font(.caption2)
-                        Text(contact.timestamp?.formatted(.dateTime.month().day()) ?? "")
-                            .font(.caption2)
-                            .foregroundColor(.gray)
-                    }
-                    .padding(8)
-                    .background(Color(.systemBackground))
-                    .cornerRadius(8)
-                    .shadow(radius: 2)
-                    .onTapGesture {
-                        onContactSelected(contact)
-                    }
+                    let offset = calculateOffset(for: contact, among: contacts)
+                    Text(contact.name ?? "Unknown")
+                        .font(.caption)
+                        .bold()
+                        .padding(8)
+                        .background(Color(.systemBackground))
+                        .cornerRadius(8)
+                        .shadow(radius: 2)
+                        .offset(x: offset.x, y: offset.y)
+                        .onTapGesture {
+                            onContactSelected(contact)
+                        }
                 }
         }
         
@@ -228,6 +235,40 @@ struct MapView: View {
                     .fill(Color.white)
                     .frame(width: 32, height: 32)
             )
+        
+        .onChange(of: region) { newRegion in
+            targetLocation = newRegion.center
+        }
+    }
+    
+    private func calculateOffset(for contact: Contact, among allContacts: FetchedResults<Contact>) -> CGPoint {
+        let threshold = 0.0001 // Approximately 10 meters
+        var overlappingContacts: [(Contact, Int)] = []
+        var currentIndex = 0
+        
+        // Find all overlapping contacts and assign them indices
+        for otherContact in allContacts {
+            let latDiff = abs(contact.latitude - otherContact.latitude)
+            let lonDiff = abs(contact.longitude - otherContact.longitude)
+            
+            if latDiff < threshold && lonDiff < threshold {
+                overlappingContacts.append((otherContact, currentIndex))
+                currentIndex += 1
+            }
+        }
+        
+        // If this contact is part of an overlapping group
+        if let index = overlappingContacts.first(where: { $0.0 == contact })?.1,
+           overlappingContacts.count > 1 {
+            let angle = (2 * .pi * Double(index)) / Double(overlappingContacts.count)
+            let radius: CGFloat = 60 // Adjust this value to control the spread
+            return CGPoint(
+                x: radius * cos(angle),
+                y: radius * sin(angle)
+            )
+        }
+        
+        return CGPoint(x: 0, y: 0)
     }
 }
 

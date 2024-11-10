@@ -9,6 +9,7 @@ struct EditContactView: View {
     @State private var name: String
     @State private var descriptionText: String
     var onContactUpdated: () -> Void
+    @State private var showingDeleteAlert = false
     
     init(contact: Contact, onContactUpdated: @escaping () -> Void) {
         self.contact = contact
@@ -41,6 +42,16 @@ struct EditContactView: View {
                     Text("Location: \(String(format: "%.6f", contact.latitude)), \(String(format: "%.6f", contact.longitude))")
                         .foregroundColor(.gray)
                 }
+                
+                Section {
+                    Button(role: .destructive) {
+                        showingDeleteAlert = true
+                    } label: {
+                        Text("Delete Contact")
+                            .foregroundColor(.red)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
             }
             .navigationTitle("Edit Contact")
             .navigationBarTitleDisplayMode(.inline)
@@ -51,6 +62,14 @@ struct EditContactView: View {
                         dismiss()
                     }
                 }
+            }
+            .alert("Delete Contact", isPresented: $showingDeleteAlert) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete", role: .destructive) {
+                    deleteContact()
+                }
+            } message: {
+                Text("Are you sure you want to delete this contact?")
             }
         }
         .presentationDetents([.medium])
@@ -64,6 +83,16 @@ struct EditContactView: View {
             }
         } catch {
             print("Error saving context: \(error)")
+        }
+    }
+    
+    private func deleteContact() {
+        viewContext.delete(contact)
+        do {
+            try viewContext.save()
+            dismiss()
+        } catch {
+            print("Error deleting contact: \(error)")
         }
     }
 } 

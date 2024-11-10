@@ -21,18 +21,22 @@ struct AddContactView: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Contact Details")) {
+                Section {
                     TextField("Name", text: $name)
-                    TextField("Description (Optional)", text: $descriptionText)
+                    TextField("Description", text: $descriptionText)
                 }
             }
-            .navigationBarTitle("Add New Contact", displayMode: .inline)
-            .navigationBarItems(leading: Button("Cancel") {
-                presentationMode.wrappedValue.dismiss()
-            }, trailing: Button("Save") {
-                addContact()
-            }.disabled(name.isEmpty))
+            .navigationBarTitle("New Contact", displayMode: .inline)
+            .navigationBarItems(
+                leading: Button("Cancel") {
+                    presentationMode.wrappedValue.dismiss()
+                },
+                trailing: Button("Save") {
+                    addContact()
+                }.disabled(name.isEmpty)
+            )
         }
+        .presentationDetents([.medium])
     }
 
     private func addContact() {
@@ -60,6 +64,18 @@ struct AddContactView: View {
             presentationMode.wrappedValue.dismiss()
         } catch {
             print("Error saving contact: \(error)")
+        }
+    }
+}
+
+extension View {
+    func placeholder<Content: View>(
+        when shouldShow: Bool,
+        alignment: Alignment = .leading,
+        @ViewBuilder placeholder: () -> Content) -> some View {
+        ZStack(alignment: alignment) {
+            placeholder().opacity(shouldShow ? 1 : 0)
+            self
         }
     }
 }

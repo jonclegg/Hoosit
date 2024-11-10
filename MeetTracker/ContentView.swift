@@ -31,6 +31,8 @@ struct ContentView: View {
     
     @State private var targetLocation: CLLocationCoordinate2D?
     
+    @State private var showingSidebar = false
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -42,11 +44,42 @@ struct ContentView: View {
                     onContactSelected: navigateToEditContact
                 )
                 .edgesIgnoringSafeArea(.all)
-                .onAppear {
-                    // Initial setup if needed
+                
+                // Add sidebar overlay when shown
+                if showingSidebar {
+                    Color.black.opacity(0.3)
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            withAnimation {
+                                showingSidebar = false
+                            }
+                        }
+                    
+                    SidebarView(isOpen: $showingSidebar)
+                        .transition(.move(edge: .leading))
                 }
                 
                 VStack {
+                    HStack {
+                        Button(action: {
+                            withAnimation {
+                                showingSidebar = true
+                            }
+                        }) {
+                            Image(systemName: "line.horizontal.3")
+                                .font(.title2)
+                                .foregroundColor(.black)
+                                .padding(12)
+                                .background(Color(.systemBackground))
+                                .clipShape(Circle())
+                                .shadow(radius: 2)
+                        }
+                        .padding(.leading, 16)
+                        Spacer()
+                    }
+                    .padding(.top, 48)
+                    .zIndex(1)
+                    
                     Spacer()
                     
                     // ControlsView remains
@@ -312,4 +345,123 @@ struct NoContactsView: View {
                     .fill(Color(.systemBackground).opacity(0.8))
             )
     }
+}
+
+struct SidebarView: View {
+    @Binding var isOpen: Bool
+    @Environment(\.managedObjectContext) private var viewContext
+    @State private var showingShareSheet = false
+    @State private var contactsToShare: [Any] = []
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("Menu")
+                .font(.title)
+                .padding(.top, 48)
+            
+            Button {
+                let items = prepareContactsForSharing()
+                let av = UIActivityViewController(
+                    activityItems: items,
+                    applicationActivities: nil)
+                
+                // Get the window scene
+                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                   let window = windowScene.windows.first,
+                   let rootVC = window.rootViewController {
+                    rootVC.present(av, animated: true)
+                }
+            } label: {
+                Label("Export Contacts", systemImage: "square.and.arrow.up")
+            }
+            
+            Button(action: importContacts) {
+                Label("Import Contacts", systemImage: "square.and.arrow.down")
+            }
+            
+            Spacer()
+        }
+        .frame(width: 300)
+        .padding()
+        .background(Color(.systemBackground))
+        .edgesIgnoringSafeArea(.vertical)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    private func prepareContactsForSharing() -> [String] {
+        let contacts = (try? viewContext.fetch(Contact.fetchRequest())) ?? []
+        let dateFormatter = ISO8601DateFormatter()
+        
+        let contactData = contacts.map { contact in
+            [
+                "name": contact.name ?? "",
+                "descriptionText": contact.descriptionText ?? "",
+                "latitude": contact.latitude,
+                "longitude": contact.longitude,
+                "timestamp": dateFormatter.string(from: contact.timestamp ?? Date())
+            ] as [String : Any]
+        }
+        
+        if let jsonData = try? JSONSerialization.data(withJSONObject: contactData, options: .prettyPrinted),
+           let jsonString = String(data: jsonData, encoding: .utf8) {
+            return [jsonString]
+        }
+        
+        return ["No contacts to share"]
+    }
+    
+    private func importContacts() {
+        guard let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+        let importPath = documentsPath.appendingPathComponent("contacts.json")
+        
+        guard let jsonData = try? Data(contentsOf: importPath),
+              let contactsArray = try? JSONSerialization.jsonObject(with: jsonData) as? [[String: Any]] else { return }
+        
+        let dateFormatter = ISO8601DateFormatter()
+        
+        for contactData in contactsArray {
+            let contact = Contact(context: viewContext)
+            contact.name = contactData["name"] as? String
+            contact.descriptionText = contactData["descriptionText"] as? String
+            contact.latitude = contactData["latitude"] as? Double ?? 0
+            contact.longitude = contactData["longitude"] as? Double ?? 0
+            if let timestampString = contactData["timestamp"] as? String {
+                contact.timestamp = dateFormatter.date(from: timestampString)
+            }
+        }
+        
+        try? viewContext.save()
+    }
+}
+
+struct ShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+    
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let controller = UIActivityViewController(
+            activityItems: activityItems,
+            applicationActivities: nil
+        )
+        
+        // Exclude some activity types that don't make sense for our JSON file
+        controller.excludedActivityTypes = [
+            .assignToContact,
+            .saveToCameraRoll,
+            .addToReadingList,
+            .postToFlickr,
+            .postToVimeo,
+            .markupAsPDF
+        ]
+        
+        // Optional: Add completion handler
+        controller.completionWithItemsHandler = { (activityType, completed, returnedItems, error) in
+            if let error = error {
+                print("Share error: \(error)")
+            }
+        }
+        
+        return controller
+    }
+    
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }

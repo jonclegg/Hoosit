@@ -61,7 +61,8 @@ struct ContentView: View {
                     targetLocation: $targetLocation,
                     contacts: contacts,
                     onClusterTapped: handleClusterTap,
-                    onContactSelected: navigateToEditContact
+                    onContactSelected: navigateToEditContact,
+                    onTargetTapped: { showingAddContact = true }
                 )
                 .edgesIgnoringSafeArea(.all)
                 
@@ -102,12 +103,19 @@ struct ContentView: View {
                    
                     Spacer()
                     
-                    // ControlsView remains
-                    ControlsView(centerOnUser: centerOnUser, addContactAction: {
-                        showingAddContact = true
-                    })
+                    // Replace ControlsView with just the location button
+                    HStack {
+                        Button(action: centerOnUser) {
+                            Image(systemName: "location.fill")
+                                .padding(12)
+                                .background(Color(.systemBackground))
+                                .clipShape(Circle())
+                                .shadow(radius: 2)
+                        }
+                        Spacer()
+                    }
                     .padding(.horizontal, 16)
-                    .padding(.bottom, 20) // Adjust padding as needed
+                    .padding(.bottom, 20)
                 }
                 .ignoresSafeArea(edges: .bottom)
             }
@@ -127,15 +135,22 @@ struct ContentView: View {
             .sheet(isPresented: $showingAddContact, onDismiss: {
                 targetLocation = nil
             }) {
-                AddContactView(initialLocation: targetLocation, onContactAdded: {
-                    if let location = targetLocation {
-                        withAnimation {
-                            region.center = location
+                AddContactView(initialLocation: region.center, onContactAdded: {
+                    // Force a view refresh by slightly modifying the region
+                    withAnimation {
+                        let currentSpan = region.span
+                        region.span = MKCoordinateSpan(
+                            latitudeDelta: currentSpan.latitudeDelta * 1.001,
+                            longitudeDelta: currentSpan.longitudeDelta * 1.001
+                        )
+                        // Reset back to original span after a brief delay
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                            region.span = currentSpan
                         }
                     }
                 })
-                    .environment(\.managedObjectContext, viewContext)
-                    .environmentObject(locationManager)
+                .environment(\.managedObjectContext, viewContext)
+                .environmentObject(locationManager)
             }
             .sheet(item: $selectedContact) { contact in
                 EditContactView(contact: contact, onContactUpdated: {
@@ -255,42 +270,51 @@ struct MapView: View {
     var contacts: FetchedResults<Contact>
     var onClusterTapped: (MKClusterAnnotation) -> Void
     var onContactSelected: (Contact) -> Void
+    var onTargetTapped: () -> Void
     
     var body: some View {
-        Map(coordinateRegion: $region,
-            showsUserLocation: true,
-            annotationItems: contacts) { contact in
-                MapAnnotation(coordinate: CLLocationCoordinate2D(
-                    latitude: contact.latitude,
-                    longitude: contact.longitude
-                )) {
-                    let offset = calculateOffset(for: contact, among: contacts)
-                    Text(contact.name ?? "Unknown")
-                        .font(.caption)
-                        .bold()
-                        .padding(8)
-                        .background(Color(.systemBackground))
-                        .cornerRadius(8)
-                        .shadow(radius: 2)
-                        .offset(x: offset.x, y: offset.y)
-                        .onTapGesture {
-                            onContactSelected(contact)
-                        }
-                }
-        }
-        
-        // Target overlay
-        Image(systemName: "plus.circle")
-            .font(.title)
-            .foregroundColor(.blue)
-            .background(
-                Circle()
-                    .fill(Color.white)
-                    .frame(width: 32, height: 32)
-            )
-        
-        .onChange(of: region) { newRegion in
-            targetLocation = newRegion.center
+        ZStack {
+            Map(coordinateRegion: $region,
+                showsUserLocation: true,
+                annotationItems: contacts) { contact in
+                    MapAnnotation(coordinate: CLLocationCoordinate2D(
+                        latitude: contact.latitude,
+                        longitude: contact.longitude
+                    )) {
+                        let offset = calculateOffset(for: contact, among: contacts)
+                        Text(contact.name ?? "Unknown")
+                            .font(.caption)
+                            .bold()
+                            .padding(8)
+                            .background(Color(.systemBackground))
+                            .cornerRadius(8)
+                            .shadow(radius: 2)
+                            .offset(x: offset.x, y: offset.y)
+                            .onTapGesture {
+                                onContactSelected(contact)
+                            }
+                    }
+            }
+            
+            // Center target marker
+            GeometryReader { geometry in
+                Image(systemName: "plus.circle")
+                    .font(.title)
+                    .foregroundColor(.blue)
+                    .background(
+                        Circle()
+                            .fill(Color.white)
+                            .frame(width: 32, height: 32)
+                    )
+                    .position(
+                        x: geometry.size.width / 2,
+                        y: geometry.size.height / 2
+                    )
+                    .onTapGesture {
+                        targetLocation = region.center
+                        onTargetTapped()
+                    }
+            }
         }
     }
     
@@ -322,36 +346,6 @@ struct MapView: View {
         }
         
         return CGPoint(x: 0, y: 0)
-    }
-}
-
-struct ControlsView: View {
-    var centerOnUser: () -> Void
-    var addContactAction: () -> Void
-    
-    var body: some View {
-        HStack {
-            Button(action: centerOnUser) {
-                Image(systemName: "location.fill")
-                    .padding(12)
-                    .background(Color(.systemBackground))
-                    .clipShape(Circle())
-                    .shadow(radius: 2)
-            }
-            
-            Spacer()
-            
-            Button(action: addContactAction) {
-                Text("Add Person")
-                    .font(.body)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .clipShape(Capsule())
-                    .shadow(radius: 4)
-            }
-        }
     }
 }
 

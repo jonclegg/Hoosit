@@ -60,8 +60,12 @@ struct AddContactView: View {
 
         do {
             try viewContext.save()
-            onContactAdded()
             presentationMode.wrappedValue.dismiss()
+            
+            // Call onContactAdded after dismissal to ensure map updates
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                onContactAdded()
+            }
         } catch {
             print("Error saving contact: \(error)")
         }

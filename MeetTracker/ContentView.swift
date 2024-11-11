@@ -53,6 +53,9 @@ struct ContentView: View {
     
     @State private var showingSidebar = false
     
+    @AppStorage("hasShownTargetHelper") private var hasShownTargetHelper = false
+    @State private var showTargetHelper = false
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -118,6 +121,15 @@ struct ContentView: View {
                     .padding(.bottom, 20)
                 }
                 .ignoresSafeArea(edges: .bottom)
+                
+                // Add this overlay after the VStack containing the controls
+                if !hasShownTargetHelper {
+                    TargetHelperOverlay {
+                        hasShownTargetHelper = true
+                        showTargetHelper = false
+                    }
+                    .transition(.opacity)
+                }
             }
             .onChange(of: locationManager.currentLocation) { newLocation in
                 if let location = newLocation, !hasSetInitialLocation {
@@ -132,6 +144,15 @@ struct ContentView: View {
                 }
             }
             .onAppear(perform: simulateLoading)
+            .onAppear {
+                if !hasShownTargetHelper {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        withAnimation {
+                            showTargetHelper = true
+                        }
+                    }
+                }
+            }
             .sheet(isPresented: $showingAddContact, onDismiss: {
                 targetLocation = nil
             }) {
@@ -621,4 +642,41 @@ struct ShareSheet: UIViewControllerRepresentable {
     }
     
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+struct TargetHelperOverlay: View {
+    var onDismiss: () -> Void
+    
+    var body: some View {
+        VStack {
+            Spacer()
+            HStack {
+                Spacer()
+                VStack(alignment: .center, spacing: 12) {
+                    Text("Tap the target at the center of the map to add people!")
+                        .multilineTextAlignment(.center)
+                        .foregroundColor(.white)
+                        .padding()
+                    Button("Got it!") {
+                        withAnimation {
+                            onDismiss()
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 8)
+                    .background(Color.white)
+                    .foregroundColor(.blue)
+                    .cornerRadius(8)
+                    .padding(.bottom)
+                }
+                .background(Color.black.opacity(0.8))
+                .cornerRadius(12)
+                .padding()
+                Spacer()
+            }
+            .padding(.bottom, 100)
+        }
+        .background(Color.black.opacity(0.3))
+        .ignoresSafeArea()
+    }
 }

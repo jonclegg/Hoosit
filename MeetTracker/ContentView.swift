@@ -272,6 +272,9 @@ struct MapView: View {
     var onContactSelected: (Contact) -> Void
     var onTargetTapped: () -> Void
     
+    @State private var isAnimating = false
+    @State private var lastRegion: MKCoordinateRegion?
+    
     var body: some View {
         ZStack {
             Map(coordinateRegion: $region,
@@ -296,7 +299,7 @@ struct MapView: View {
                     }
             }
             
-            // Center target marker
+            // Updated center target marker
             GeometryReader { geometry in
                 Image(systemName: "plus.circle")
                     .font(.title)
@@ -306,14 +309,31 @@ struct MapView: View {
                             .fill(Color.white)
                             .frame(width: 32, height: 32)
                     )
+                    .scaleEffect(isAnimating ? 1.3 : 1.0)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isAnimating)
                     .position(
                         x: geometry.size.width / 2,
                         y: geometry.size.height / 2
                     )
                     .onTapGesture {
                         targetLocation = region.center
+                        isAnimating = true
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                            isAnimating = false
+                        }
                         onTargetTapped()
                     }
+            }
+        }
+        .onChange(of: region) { newRegion in
+            lastRegion = newRegion
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                if lastRegion == newRegion {
+                    isAnimating = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        isAnimating = false
+                    }
+                }
             }
         }
     }

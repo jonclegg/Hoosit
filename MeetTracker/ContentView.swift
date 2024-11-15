@@ -56,6 +56,9 @@ struct ContentView: View {
     @AppStorage("hasShownTargetHelper") private var hasShownTargetHelper = false
     @State private var showTargetHelper = false
     
+    @AppStorage("lastLatitude") private var lastLatitude: Double = 37.7749
+    @AppStorage("lastLongitude") private var lastLongitude: Double = -122.4194
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -131,15 +134,30 @@ struct ContentView: View {
                     .transition(.opacity)
                 }
             }
-            .onChange(of: locationManager.currentLocation) { newLocation in
-                if let location = newLocation, !hasSetInitialLocation {
-                    withAnimation {
-                        region = MKCoordinateRegion(
-                            center: location.coordinate,
-                            latitudinalMeters: 1000,
-                            longitudinalMeters: 1000
-                        )
-                        hasSetInitialLocation = true
+            .onChange(of: locationManager.lastKnownLocation) { newLocation in
+                if let location = newLocation {
+                    let lastCoordinate = CLLocationCoordinate2D(
+                        latitude: lastLatitude,
+                        longitude: lastLongitude
+                    )
+                    let lastLocation = CLLocation(
+                        latitude: lastCoordinate.latitude,
+                        longitude: lastCoordinate.longitude
+                    )
+                    
+                    let distance = lastLocation.distance(from: location)
+                    
+                    if distance > 1000 || !hasSetInitialLocation {
+                        withAnimation {
+                            region = MKCoordinateRegion(
+                                center: location.coordinate,
+                                latitudinalMeters: 1000,
+                                longitudinalMeters: 1000
+                            )
+                            lastLatitude = location.coordinate.latitude
+                            lastLongitude = location.coordinate.longitude
+                            hasSetInitialLocation = true
+                        }
                     }
                 }
             }
@@ -152,6 +170,13 @@ struct ContentView: View {
                         }
                     }
                 }
+                // Force a location refresh when view appears
+                locationManager.refreshLocation()
+            }
+            .onDisappear {
+                // Save the last location when the app goes to background
+                lastLatitude = region.center.latitude
+                lastLongitude = region.center.longitude
             }
             .sheet(isPresented: $showingAddContact, onDismiss: {
                 targetLocation = nil
@@ -186,7 +211,14 @@ struct ContentView: View {
     private func centerOnUser() {
         if let location = locationManager.currentLocation {
             withAnimation {
-                region.center = location.coordinate
+                region = MKCoordinateRegion(
+                    center: location.coordinate,
+                    latitudinalMeters: 1000,
+                    longitudinalMeters: 1000
+                )
+                // Update stored location when manually centering
+                lastLatitude = location.coordinate.latitude
+                lastLongitude = location.coordinate.longitude
             }
         }
     }

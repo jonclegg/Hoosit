@@ -128,8 +128,54 @@
             endingColumnNumber = "9223372036854775807"
             startingLineNumber = "388"
             endingLineNumber = "388"
-            landmarkName = "calculateAdjustedCoordinate(for:among:)"
-            landmarkType = "7">
+            landmarkName = "body"
+            landmarkType = "24">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "D70BA3B2-C94D-4770-A343-1BACD61AF7C9"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "MeetTracker/ContentView.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "159"
+            endingLineNumber = "159"
+            landmarkName = "body"
+            landmarkType = "24">
+            <Locations>
+               <Location
+                  uuid = "D70BA3B2-C94D-4770-A343-1BACD61AF7C9 - 9e896bad4ed8d7a4"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "closure #3 () -&gt; () in closure #1 () -&gt; &lt;&lt;opaque return type of SwiftUI.View.sheet&lt;&#x3c4;_0_0, &#x3c4;_0_1 where &#x3c4;_1_0: Swift.Identifiable, &#x3c4;_1_1: SwiftUI.View&gt;(item: SwiftUI.Binding&lt;Swift.Optional&lt;&#x3c4;_1_0&gt;&gt;, onDismiss: Swift.Optional&lt;() -&gt; ()&gt;, content: (&#x3c4;_1_0) -&gt; &#x3c4;_1_1) -&gt; some&gt;&gt;.0 in Hoosit.ContentView.body.getter : some"
+                  moduleName = "Hoosit.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/jonathanclegg/dev/MeetTracker/MeetTracker/ContentView.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "159"
+                  endingLineNumber = "159">
+               </Location>
+               <Location
+                  uuid = "D70BA3B2-C94D-4770-A343-1BACD61AF7C9 - 2cbb0f1e447b1e58"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "closure #1 () -&gt; () in closure #2 (Swift.Optional&lt;__C.CLLocation&gt;) -&gt; () in closure #1 () -&gt; &lt;&lt;opaque return type of SwiftUI.View.sheet&lt;&#x3c4;_0_0, &#x3c4;_0_1 where &#x3c4;_1_0: Swift.Identifiable, &#x3c4;_1_1: SwiftUI.View&gt;(item: SwiftUI.Binding&lt;Swift.Optional&lt;&#x3c4;_1_0&gt;&gt;, onDismiss: Swift.Optional&lt;() -&gt; ()&gt;, content: (&#x3c4;_1_0) -&gt; &#x3c4;_1_1) -&gt; some&gt;&gt;.0 in Hoosit.ContentView.body.getter : some"
+                  moduleName = "Hoosit.debug.dylib"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/jonathanclegg/dev/MeetTracker/MeetTracker/ContentView.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "159"
+                  endingLineNumber = "159">
+               </Location>
+            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>

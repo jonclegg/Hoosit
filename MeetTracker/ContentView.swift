@@ -301,22 +301,21 @@ struct MapView: View {
             Map(coordinateRegion: $region,
                 showsUserLocation: true,
                 annotationItems: contacts) { contact in
-                    MapAnnotation(coordinate: CLLocationCoordinate2D(
-                        latitude: contact.latitude,
-                        longitude: contact.longitude
-                    )) {
-                        let offset = calculateOffset(for: contact, among: contacts)
-                        Text(contact.name ?? "Unknown")
-                            .font(.caption)
-                            .bold()
-                            .padding(8)
-                            .background(Color(.systemBackground))
-                            .cornerRadius(8)
-                            .shadow(radius: 2)
-                            .offset(x: offset.x, y: offset.y)
-                            .onTapGesture {
-                                onContactSelected(contact)
-                            }
+                    MapAnnotation(coordinate: calculateAdjustedCoordinate(for: contact, among: contacts)) {
+                        Button(action: {
+                            onContactSelected(contact)
+                        }) {
+                            Text(contact.name ?? "Unknown")
+                                .font(.caption)
+                                .bold()
+                                .padding(8)
+                                .background(Color(.systemBackground))
+                                .cornerRadius(8)
+                                .shadow(radius: 2)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .contentShape(Rectangle())
+                        .frame(width: 100, height: 40)
                     }
             }
             
@@ -359,12 +358,12 @@ struct MapView: View {
         }
     }
     
-    private func calculateOffset(for contact: Contact, among allContacts: FetchedResults<Contact>) -> CGPoint {
+    private func calculateAdjustedCoordinate(for contact: Contact, among allContacts: FetchedResults<Contact>) -> CLLocationCoordinate2D {
         let threshold = 0.0001 // Approximately 10 meters
         var overlappingContacts: [(Contact, Int)] = []
         var currentIndex = 0
         
-        // Find all overlapping contacts and assign them indices
+        // Find all overlapping contacts
         for otherContact in allContacts {
             let latDiff = abs(contact.latitude - otherContact.latitude)
             let lonDiff = abs(contact.longitude - otherContact.longitude)
@@ -379,14 +378,23 @@ struct MapView: View {
         if let index = overlappingContacts.first(where: { $0.0 == contact })?.1,
            overlappingContacts.count > 1 {
             let angle = (2 * .pi * Double(index)) / Double(overlappingContacts.count)
-            let radius: CGFloat = 60 // Adjust this value to control the spread
-            return CGPoint(
-                x: radius * cos(angle),
-                y: radius * sin(angle)
+            
+            // Use a small offset in coordinate space (about 5-10 meters)
+            let offsetSize = 0.00005
+            
+            let latOffset = offsetSize * cos(angle)
+            let lonOffset = offsetSize * sin(angle)
+            
+            return CLLocationCoordinate2D(
+                latitude: contact.latitude + latOffset,
+                longitude: contact.longitude + lonOffset
             )
         }
         
-        return CGPoint(x: 0, y: 0)
+        return CLLocationCoordinate2D(
+            latitude: contact.latitude,
+            longitude: contact.longitude
+        )
     }
 }
 

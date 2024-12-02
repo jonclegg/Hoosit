@@ -39,8 +39,10 @@ struct EditContactView: View {
                     Text("Met on \(contact.timestamp ?? Date(), style: .date)")
                         .foregroundColor(.gray)
                     
-                    Text("Location: \(String(format: "%.6f", contact.latitude)), \(String(format: "%.6f", contact.longitude))")
-                        .foregroundColor(.gray)
+                    Link(destination: URL(string: "maps://?q=\(contact.latitude),\(contact.longitude)")!) {
+                        Text("Location: \(String(format: "%.6f", contact.latitude)), \(String(format: "%.6f", contact.longitude))")
+                            .foregroundColor(.blue)
+                    }
                 }
                 
                 Section {
